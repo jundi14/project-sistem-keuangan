@@ -126,14 +126,58 @@ function getPreviousAcademicYear(year) {
   return null;
 }
 
+function getNextAcademicYear(year) {
+  const parts = year.split('/').map(Number);
+  if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+    return `${parts[0] + 1}/${parts[1] + 1}`;
+  }
+  return null;
+}
+
+function getNextClass(currentClass) {
+  const order = ['I', 'II', 'III', 'IV', 'V', 'VI'];
+  const idx = order.indexOf(currentClass);
+  return idx >= 0 && idx < order.length - 1 ? order[idx + 1] : currentClass;
+}
+
 function getCategoryDefaultAmount(categoryId, year = getCurrentAcademicYear()) {
   return DataManager.getCategoryDefaultAmount(categoryId, year) || 0;
+}
+
+function getAcademicYearList() {
+  const years = DataManager.getAcademicYears();
+  const current = getCurrentAcademicYear();
+  if (current && !years.includes(current)) years.push(current);
+  return years.sort((a, b) => {
+    const pa = parseInt(a.split('/')[0]) || 0;
+    const pb = parseInt(b.split('/')[0]) || 0;
+    return pa - pb;
+  });
+}
+
+function renderAcademicYearList() {
+  const yearInput = document.getElementById('settings-academic-year');
+  const datalist = document.getElementById('settings-academic-year-list');
+  const historyElem = document.getElementById('settings-year-history');
+  const years = getAcademicYearList();
+  if (datalist) {
+    datalist.innerHTML = years.map(y => `<option value="${y}"></option>`).join('');
+  }
+  if (historyElem) {
+    historyElem.textContent = years.length ? `Riwayat tahun ajaran: ${years.join(', ')}` : 'Belum ada riwayat tahun ajaran.';
+  }
+  if (yearInput && !yearInput.value) {
+    yearInput.value = getCurrentAcademicYear();
+  }
 }
 
 function renderSettings() {
   const settings = DataManager.getSettings();
   const yearInput = document.getElementById('settings-academic-year');
+  const promotionYear = document.getElementById('settings-promotion-year');
   if (yearInput) yearInput.value = settings.academicYear || '2024/2025';
+  renderAcademicYearList();
+  if (promotionYear) promotionYear.value = getNextAcademicYear(getCurrentAcademicYear()) || '';
   renderCategorySettingsTable();
 }
 
@@ -142,11 +186,9 @@ function saveCategoryNominalSettings() {
   const year = yearInput?.value.trim() || getCurrentAcademicYear();
   if (!year) { Utils.showToast('Tahun ajaran harus diisi', 'error'); return; }
 
-  const inputs = Array.from(document.querySelectorAll('[data-default-amount-input]'));
+  const inputs = Array.from(document.querySelectorAll('.category-default-amount-input'));
   if (inputs.length === 0) {
-    Utils.showToast('Tidak ada kategori untuk disimpan.', 'error');
-    return;
-  }
+    Utils.showToast('Tidak ada kategori untuk disimpan.', 'error'); return; }
 
   inputs.forEach(input => {
     const catId = input.dataset.categoryId;
@@ -154,6 +196,7 @@ function saveCategoryNominalSettings() {
     DataManager.setCategoryDefaultAmount(catId, amount, year);
   });
 
+  DataManager.ensureAcademicYear(year);
   const settings = DataManager.getSettings();
   if (settings.academicYear !== year) {
     settings.academicYear = year;
@@ -161,7 +204,22 @@ function saveCategoryNominalSettings() {
   }
 
   Utils.showToast(`Nominal kategori disimpan untuk tahun ajaran ${year}`, 'success');
-  renderCategorySettingsTable();
+  renderSettings();
+}
+
+function saveCategoryDefaultAmount(categoryId) {
+  const yearInput = document.getElementById('settings-academic-year');
+  const year = yearInput?.value.trim() || getCurrentAcademicYear();
+  const input = document.querySelector(`[data-category-id="${categoryId}"]`);
+  if (!input) {
+    Utils.showToast('Input nominal kategori tidak ditemukan.', 'error');
+    return;
+  }
+  const amount = parseFloat(input.value) || 0;
+  DataManager.ensureAcademicYear(year);
+  DataManager.setCategoryDefaultAmount(categoryId, amount, year);
+  Utils.showToast(`Nominal kategori ${categoryId} disimpan untuk tahun ajaran ${year}`, 'success');
+  renderSettings();
 }
 
 function duplicateCategoryNominalSettings() {
@@ -181,12 +239,52 @@ function duplicateCategoryNominalSettings() {
   renderCategorySettingsTable();
 }
 
+function saveCategoryDefaultAmount(categoryId) {
+  const yearInput = document.getElementById('settings-academic-year');
+  const year = yearInput?.value.trim() || getCurrentAcademicYear();
+  const input = document.querySelector(`[data-category-id="${categoryId}"]`);
+  if (!input) {
+    Utils.showToast('Input nominal kategori tidak ditemukan.', 'error');
+    return;
+  }
+  const amount = parseFloat(input.value) || 0;
+  DataManager.setCategoryDefaultAmount(categoryId, amount, year);
+  Utils.showToast(`Nominal kategori ${categoryId} disimpan untuk tahun ajaran ${year}`, 'success');
+}
+
 function updateBillAmountFromCategoryDefault() {
   const category = document.getElementById('form-bill-category')?.value;
   const amountInput = document.getElementById('form-bill-amount');
   if (!amountInput || !category) return;
   const amount = getCategoryDefaultAmount(category);
   if (amount > 0) amountInput.value = amount;
+}
+
+function promoteStudentsToNextYear() {
+  const currentYear = getCurrentAcademicYear();
+  const nextYear = getNextAcademicYear(currentYear);
+  if (!nextYear) { Utils.showToast('Format tahun ajaran tidak valid', 'error'); return; }
+
+  const kbmDate = document.getElementById('settings-promotion-kbm-date')?.value;
+  if (!kbmDate) { Utils.showToast('Tanggal mulai KBM harus diisi', 'error'); return; }
+
+  const students = DataManager.getStudents().map(s => {
+    const nextClass = getNextClass(s.class);
+    const academicHistory = s.academicHistory || {};
+    academicHistory[nextYear] = {
+      class: nextClass,
+      kbmStartDate: kbmDate,
+    };
+    return { ...s, class: nextClass, academicHistory };
+  });
+
+  DataManager.saveStudents(students);
+  DataManager.setAcademicYear(nextYear);
+  DataManager.ensureAcademicYear(nextYear);
+  document.getElementById('settings-academic-year').value = nextYear;
+  document.getElementById('settings-promotion-year').value = nextYear;
+  renderSettings();
+  Utils.showToast(`Semua siswa dipromosikan ke tahun ajaran ${nextYear} dan tanggal KBM tersimpan`, 'success');
 }
 
 function submitCategoryForm() {
@@ -287,11 +385,12 @@ function renderCategorySettingsTable() {
         <td>${c.type}</td>
         <td><div style="width:28px; height:18px; background:${c.color}; border-radius:4px; border:1px solid #0003"></div></td>
         <td>
-          <input type="number" class="category-default-amount-input" data-category-id="${c.id}" value="${defaultAmount}" min="0" step="1000" style="width:120px; background:transparent; border:1px solid var(--border); border-radius:8px; padding:6px 8px; color:var(--text-primary);">
+          <input type="number" class="category-default-amount-input" data-default-amount-input data-category-id="${c.id}" value="${defaultAmount}" min="0" step="1000" style="width:120px; background:transparent; border:1px solid var(--border); border-radius:8px; padding:6px 8px; color:var(--text-primary);">
         </td>
         <td>
           <div class="action-btns">
             <button class="btn btn-sm btn-outline" onclick="openCategoryModal('edit','${c.id}')">✏️ Edit</button>
+            <button class="btn btn-sm btn-outline" onclick="saveCategoryDefaultAmount('${c.id}')">💾 Simpan Nominal</button>
             <button class="btn btn-sm btn-danger-outline" onclick="deleteCategory('${c.id}')">🗑️ Hapus</button>
           </div>
         </td>
@@ -584,7 +683,7 @@ function openStudentDetail(studentId) {
             ${remaining > 0 ? `<div class="payment-row-remaining">Sisa: ${Utils.formatCurrency(remaining)}</div>` : ''}
             <div class="payment-row-actions">
               ${p.status !== PAYMENT_STATUS.PAID ? `<button class="btn btn-sm btn-primary" onclick="openPayModal('${p.id}', '${studentId}')">Bayar</button>` : ''}
-              ${p.receiptNo ? `<button class="btn btn-sm btn-outline" onclick="printPaymentReceipt('${p.id}')">🖨️ Cetak</button>` : ''}
+              ${p.receiptNo ? `<button class="btn btn-sm btn-outline" onclick="printPaymentReceipt('${p.id}')">🖨️ Cetak</button><button class="btn btn-sm btn-outline" onclick="exportReceiptPdf('${p.id}')">📄 PDF</button>` : ''}
             </div>
           </div>
         </div>
@@ -659,7 +758,7 @@ function renderPayments() {
           <td>
             <div class="action-btns">
               ${p.status !== PAYMENT_STATUS.PAID ? `<button class="btn btn-sm btn-primary" onclick="openPayModal('${p.id}', '${p.studentId}')">Bayar</button>` : ''}
-              ${p.receiptNo ? `<button class="btn btn-sm btn-outline" onclick="printPaymentReceipt('${p.id}')">🖨️</button>` : ''}
+              ${p.receiptNo ? `<button class="btn btn-sm btn-outline" onclick="printPaymentReceipt('${p.id}')">🖨️</button><button class="btn btn-sm btn-outline" onclick="exportReceiptPdf('${p.id}')">📄</button>` : ''}
             </div>
           </td>
         </tr>
@@ -959,6 +1058,42 @@ function printPaymentReceipt(paymentId) {
   if (payment && student) Utils.printReceipt(payment, student, bill);
 }
 
+function exportReceiptPdf(paymentId) {
+  const payment = DataManager.getPayments().find(p => p.id === paymentId);
+  const student = DataManager.getStudents().find(s => s.id === payment?.studentId);
+  const bill = DataManager.getBills().find(b => b.id === payment?.billId);
+  if (!payment || !student) { Utils.showToast('Data pembayaran tidak ditemukan.', 'error'); return; }
+  Utils.exportReceiptPdf(payment, student, bill);
+}
+
+function exportReportPdf() {
+  const reportElement = document.getElementById('page-report');
+  if (!reportElement) { Utils.showToast('Halaman laporan tidak ditemukan.', 'error'); return; }
+
+  const clone = reportElement.cloneNode(true);
+  clone.style.width = '1200px';
+  clone.style.padding = '20px';
+  clone.style.background = '#ffffff';
+
+  const wrapper = document.createElement('div');
+  wrapper.style.position = 'fixed';
+  wrapper.style.left = '-9999px';
+  wrapper.appendChild(clone);
+  document.body.appendChild(wrapper);
+
+  const pdf = new window.jspdf.jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+  pdf.html(clone, {
+    callback(doc) {
+      doc.save(`Laporan_Keuangan_${new Date().toISOString().split('T')[0]}.pdf`);
+      document.body.removeChild(wrapper);
+      Utils.showToast('Laporan berhasil diekspor ke PDF', 'success');
+    },
+    x: 20,
+    y: 20,
+    html2canvas: { scale: 2, backgroundColor: '#ffffff' },
+  });
+}
+
 function closeModal(id) {
   document.getElementById(id)?.classList.remove('active');
 }
@@ -1127,6 +1262,13 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('form-bill-category')?.addEventListener('change', updateBillAmountFromCategoryDefault);
+  document.getElementById('settings-academic-year')?.addEventListener('change', () => {
+    const year = document.getElementById('settings-academic-year').value.trim();
+    if (year) {
+      DataManager.ensureAcademicYear(year);
+      renderSettings();
+    }
+  });
 
   // Detail modal filter
   ['detail-cat-filter', 'detail-status-filter'].forEach(id => {

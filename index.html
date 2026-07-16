@@ -408,7 +408,10 @@
             <h1 class="page-title">📈 Laporan Keuangan</h1>
             <div class="page-subtitle">Rekap dan analisis keuangan sekolah</div>
           </div>
-          <button class="btn btn-outline" onclick="window.print()">🖨️ Cetak Laporan</button>
+          <div class="btn-group">
+            <button class="btn btn-outline" onclick="window.print()">🖨️ Cetak Laporan</button>
+            <button class="btn btn-primary" onclick="exportReportPdf()">📄 Export PDF</button>
+          </div>
         </div>
 
         <!-- Summary Stats -->
@@ -514,9 +517,13 @@
           <div class="card-body">
             <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-bottom:16px;">
               <button class="btn btn-primary" onclick="openCategoryModal()">➕ Tambah Kategori</button>
-              <div style="display:flex; gap:8px; align-items:center;">
-                <label for="settings-academic-year" style="font-size:12px; color:var(--text-secondary);">Tahun Ajaran:</label>
-                <input id="settings-academic-year" type="text" placeholder="2024/2025" style="background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:8px 10px; border-radius:8px; min-width:130px;">
+              <div style="display:flex; flex-direction:column; gap:6px;">
+                <div style="display:flex; gap:8px; align-items:center;">
+                  <label for="settings-academic-year" style="font-size:12px; color:var(--text-secondary);">Tahun Ajaran:</label>
+                  <input list="settings-academic-year-list" id="settings-academic-year" type="text" placeholder="2024/2025" style="background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:8px 10px; border-radius:8px; min-width:130px;">
+                </div>
+                <datalist id="settings-academic-year-list"></datalist>
+                <div id="settings-year-history" style="font-size:12px; color:var(--text-secondary);"></div>
               </div>
               <button class="btn btn-outline" onclick="saveCategoryNominalSettings()">💾 Simpan Nominal</button>
               <button class="btn btn-outline" onclick="duplicateCategoryNominalSettings()">🔁 Duplikat Tahun Sebelumnya</button>
@@ -536,6 +543,28 @@
                 </thead>
                 <tbody id="category-settings-table"></tbody>
               </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mb-4">
+          <div class="card-header">
+            <div class="card-title">🔼 Naik Kelas & Mulai KBM</div>
+          </div>
+          <div class="card-body">
+            <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; margin-bottom:12px;">
+              <div class="form-group" style="flex:1; min-width:180px;">
+                <label class="form-label">Tahun Ajaran Baru</label>
+                <input id="settings-promotion-year" type="text" readonly style="background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:8px 10px; border-radius:8px; width:100%;">
+              </div>
+              <div class="form-group" style="flex:1; min-width:220px;">
+                <label class="form-label">Tanggal Mulai KBM</label>
+                <input id="settings-promotion-kbm-date" type="date" style="background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:8px 10px; border-radius:8px; width:100%;">
+              </div>
+              <button class="btn btn-primary" style="height:42px;" onclick="promoteStudentsToNextYear()">🔼 Naik Kelas</button>
+            </div>
+            <div style="color:var(--text-secondary); font-size:13px;">
+              Jalankan naik kelas untuk memindahkan semua siswa ke tahun ajaran berikutnya dan menyimpan tanggal mulai KBM aktif.
             </div>
           </div>
         </div>
@@ -918,6 +947,8 @@
 <!-- Scripts -->
 <script src="js/data.js"></script>
 <script src="js/utils.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="js/charts.js"></script>
 <script src="js/app.js"></script>
 

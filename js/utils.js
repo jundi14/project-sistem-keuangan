@@ -131,4 +131,61 @@ const Utils = {
     `);
     win.document.close();
   },
+
+  exportReceiptPdf(payment, student, bill) {
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+      Utils.showToast('Library PDF belum tersedia.', 'error');
+      return;
+    }
+
+    const doc = new window.jspdf.jsPDF({ unit: 'pt', format: 'a4' });
+    const cat = Utils.getCategoryInfo(payment.category);
+    const title = 'KWITANSI PEMBAYARAN';
+    const footer = 'Tanda Tangan Petugas';
+
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text(title, 40, 50);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Ponpes Al Muttaqin', 40, 70);
+    doc.text(`No Kwitansi: ${payment.receiptNo || '-'}`, 40, 90);
+
+    const lines = [
+      ['Tanggal Bayar', Utils.formatDate(payment.paymentDate)],
+      ['Nama Siswa', student?.name || '-'],
+      ['Kelas', student?.class || '-'],
+      ['NIS', student?.nis || '-'],
+      ['Kategori', `${cat.icon} ${bill?.description || cat.name}`],
+      ['Metode Bayar', payment.paymentMethod || '-'],
+      ['Status', payment.status === 'lunas' ? 'LUNAS' : 'CICILAN'],
+    ];
+
+    let y = 120;
+    lines.forEach(([label, value]) => {
+      doc.setFont('helvetica', 'bold');
+      doc.text(label, 40, y);
+      doc.setFont('helvetica', 'normal');
+      doc.text(String(value), 180, y);
+      y += 18;
+    });
+
+    y += 10;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Jumlah Bayar', 40, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(Utils.formatCurrency(payment.paidAmount), 180, y);
+
+    if (payment.notes) {
+      y += 28;
+      doc.setFont('helvetica', 'bold');
+      doc.text('Catatan', 40, y);
+      doc.setFont('helvetica', 'normal');
+      doc.text(payment.notes, 40, y + 18, { maxWidth: 500 });
+    }
+
+    doc.setFontSize(10);
+    doc.text(footer, 40, 760);
+    doc.save(`Kwitansi_${payment.receiptNo || payment.id}.pdf`);
+  },
 };

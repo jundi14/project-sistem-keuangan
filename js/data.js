@@ -101,6 +101,33 @@ const DataManager = {
     return amounts[categoryId] || 0;
   },
 
+  getAcademicYears() {
+    const settings = this.getSettings();
+    return Object.keys(settings.defaultCategoryAmounts || {}).sort((a, b) => {
+      const aYear = parseInt(a.split('/')[0]) || 0;
+      const bYear = parseInt(b.split('/')[0]) || 0;
+      return aYear - bYear;
+    });
+  },
+
+  ensureAcademicYear(year) {
+    const settings = this.getSettings();
+    if (!settings.defaultCategoryAmounts) settings.defaultCategoryAmounts = {};
+    if (!settings.defaultCategoryAmounts[year]) settings.defaultCategoryAmounts[year] = {};
+    if (!settings.academicYear) settings.academicYear = year;
+    this.saveSettings(settings);
+    return settings;
+  },
+
+  setAcademicYear(year) {
+    const settings = this.getSettings();
+    if (!settings.defaultCategoryAmounts) settings.defaultCategoryAmounts = {};
+    if (!settings.defaultCategoryAmounts[year]) settings.defaultCategoryAmounts[year] = {};
+    settings.academicYear = year;
+    this.saveSettings(settings);
+    return settings;
+  },
+
   setCategoryDefaultAmount(categoryId, amount, year) {
     const settings = this.getSettings();
     if (!settings.defaultCategoryAmounts) settings.defaultCategoryAmounts = {};
@@ -137,6 +164,14 @@ const DataManager = {
   addStudent(student) {
     const students = this.getStudents();
     student.id = 's' + Date.now();
+    student.academicHistory = student.academicHistory || {};
+    const currentYear = this.getSettings().academicYear || '2024/2025';
+    if (!student.academicHistory[currentYear]) {
+      student.academicHistory[currentYear] = {
+        class: student.class,
+        kbmStartDate: student.kbmStartDate || null,
+      };
+    }
     students.push(student);
     this.saveStudents(students);
     return student;
