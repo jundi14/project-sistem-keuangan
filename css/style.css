@@ -1101,3 +1101,17 @@ tbody tr:hover { background: rgba(255,255,255,0.025); }
 /* ---- GLOW EFFECTS ---- */
 .glow-green { box-shadow: 0 0 20px rgba(16,185,129,0.15); }
 .glow-accent { box-shadow: 0 0 20px rgba(99,102,241,0.2); }
+
+/* ---- AVATAR & CLASS VISUALS ---- */
+.student-avatar, .tbl-avatar, .tunggakan-avatar, #detail-avatar {
+  width: 44px; height: 44px; border-radius: 10px; display:flex; align-items:center; justify-content:center;
+  font-weight:700; font-size:16px; flex-shrink:0;
+}
+
+.student-avatar { width:48px; height:48px; font-size:18px; border-radius:10px; }
+.tbl-avatar { width:40px; height:40px; font-size:15px; border-radius:8px; }
+.tunggakan-avatar { width:40px; height:40px; font-size:15px; border-radius:8px; }
+#detail-avatar { width:56px; height:56px; font-size:20px; border-radius:12px; }
+
+.student-card[style] { transition: var(--transition); }
+

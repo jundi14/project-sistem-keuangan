@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Keuangan Sekolah – Ponpes Al Muttaqin</title>
-  <meta name="description" content="Sistem manajemen keuangan sekolah untuk Ponpes Al Muttaqin – SPP, uang buku, seragam, cicilan, dan lainnya.">
+  <title>Sistem Keuangan – SDIT Al Muttaqin</title>
+  <meta name="description" content="Sistem manajemen keuangan SDIT Al Muttaqin – SPP, uang buku, seragam, cicilan, dan lainnya.">
   <link rel="stylesheet" href="css/style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
@@ -83,7 +83,18 @@
         </div>
       </div>
       <div class="topbar-right">
-        <div class="topbar-date" id="topbar-date"></div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <select id="global-class-filter" style="min-width:110px; background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:6px 8px; border-radius:8px;">
+            <option value="all">Semua Kelas</option>
+            <option>I</option>
+            <option>II</option>
+            <option>III</option>
+            <option>IV</option>
+            <option>V</option>
+            <option>VI</option>
+          </select>
+          <div class="topbar-date" id="topbar-date"></div>
+        </div>
       </div>
     </header>
 
@@ -501,7 +512,15 @@
             <div class="card-title">🏷️ Manajemen Kategori Keuangan</div>
           </div>
           <div class="card-body">
-            <button class="btn btn-primary mb-4" onclick="openCategoryModal()" style="margin-bottom: 15px;">➕ Tambah Kategori</button>
+            <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-bottom:16px;">
+              <button class="btn btn-primary" onclick="openCategoryModal()">➕ Tambah Kategori</button>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <label for="settings-academic-year" style="font-size:12px; color:var(--text-secondary);">Tahun Ajaran:</label>
+                <input id="settings-academic-year" type="text" placeholder="2024/2025" style="background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:8px 10px; border-radius:8px; min-width:130px;">
+              </div>
+              <button class="btn btn-outline" onclick="saveCategoryNominalSettings()">💾 Simpan Nominal</button>
+              <button class="btn btn-outline" onclick="duplicateCategoryNominalSettings()">🔁 Duplikat Tahun Sebelumnya</button>
+            </div>
             <div class="table-scroll">
               <table>
                 <thead>
@@ -511,6 +530,7 @@
                     <th>Nama Kategori</th>
                     <th>Tipe</th>
                     <th>Warna</th>
+                    <th>Nominal</th>
                     <th>Aksi</th>
                   </tr>
                 </thead>
@@ -607,6 +627,7 @@
       </div>
       <div style="margin-left:auto; display:flex; gap:10px; align-items:center;">
         <button class="btn btn-sm btn-outline" onclick="openEditStudentModal(document.getElementById('student-detail-modal').dataset.studentId)">✏️ Edit</button>
+        <button class="btn btn-sm btn-danger-outline" onclick="confirmDeleteStudent()">🗑️ Hapus</button>
         <button class="modal-close" onclick="closeModal('student-detail-modal')">✕</button>
       </div>
     </div>

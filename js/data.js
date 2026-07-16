@@ -59,8 +59,24 @@ const DataManager = {
         schoolName: 'Ponpes Al Muttaqin',
         sppAmount: 150000,
         academicYear: '2024/2025',
+        defaultCategoryAmounts: {
+          '2024/2025': {
+            spp: 150000,
+            buku: 100000,
+            seragam: 250000,
+            cicilan: 0,
+            makan: 75000,
+            kegiatan: 50000,
+            lainnya: 0,
+          },
+        },
       }));
     }
+
+    const savedSettings = JSON.parse(localStorage.getItem(DB_KEYS.SETTINGS) || '{}');
+    if (!savedSettings.academicYear) savedSettings.academicYear = '2024/2025';
+    if (!savedSettings.defaultCategoryAmounts) savedSettings.defaultCategoryAmounts = { [savedSettings.academicYear]: {} };
+    localStorage.setItem(DB_KEYS.SETTINGS, JSON.stringify(savedSettings));
   },
 
   getStudents() { return JSON.parse(localStorage.getItem(DB_KEYS.STUDENTS) || '[]'); },
@@ -74,6 +90,32 @@ const DataManager = {
   savePayments(data) { localStorage.setItem(DB_KEYS.PAYMENTS, JSON.stringify(data)); },
   saveSettings(data) { localStorage.setItem(DB_KEYS.SETTINGS, JSON.stringify(data)); },
   saveCategories(data) { localStorage.setItem(DB_KEYS.CATEGORIES, JSON.stringify(data)); },
+
+  getDefaultCategoryAmounts(year) {
+    const settings = this.getSettings();
+    return (settings.defaultCategoryAmounts || {})[year] || {};
+  },
+
+  getCategoryDefaultAmount(categoryId, year) {
+    const amounts = this.getDefaultCategoryAmounts(year);
+    return amounts[categoryId] || 0;
+  },
+
+  setCategoryDefaultAmount(categoryId, amount, year) {
+    const settings = this.getSettings();
+    if (!settings.defaultCategoryAmounts) settings.defaultCategoryAmounts = {};
+    if (!settings.defaultCategoryAmounts[year]) settings.defaultCategoryAmounts[year] = {};
+    settings.defaultCategoryAmounts[year][categoryId] = amount;
+    this.saveSettings(settings);
+  },
+
+  duplicateCategoryAmounts(sourceYear, targetYear) {
+    const settings = this.getSettings();
+    if (!settings.defaultCategoryAmounts) settings.defaultCategoryAmounts = {};
+    const source = settings.defaultCategoryAmounts[sourceYear] || {};
+    settings.defaultCategoryAmounts[targetYear] = { ...source };
+    this.saveSettings(settings);
+  },
 
   addCategory(category) {
     const categories = this.getCategories();

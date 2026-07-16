@@ -53,7 +53,297 @@ function renderPage(page) {
     case 'payments': renderPayments(); break;
     case 'bills': renderBills(); break;
     case 'report': renderReport(); break;
+    case 'settings': renderSettings(); break;
   }
+}
+
+// ====== CATEGORIES HELPERS ======
+function loadCategories() {
+  // keep a global CATEGORIES array used by Utils and Charts
+  const cats = DataManager.getCategories();
+  window.CATEGORIES = cats;
+  // also expose plain global variable for legacy references
+  try { CATEGORIES = cats; } catch (e) { /* ignore */ }
+  populateCategoryOptions();
+  renderCategorySettingsTable();
+}
+
+// ====== CLASS COLOR & AVATAR HELPERS ======
+const CLASS_COLORS = {
+  'I': '#3b82f6',
+  'II': '#10b981',
+  'III': '#f59e0b',
+  'IV': '#ef4444',
+  'V': '#8b5cf6',
+  'VI': '#64748b',
+};
+
+function getClassColor(cls) {
+  return CLASS_COLORS[cls] || '#374151';
+}
+
+function hexToRgba(hex, alpha = 0.12) {
+  const h = hex.replace('#', '');
+  const bigint = parseInt(h, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function populateCategoryOptions() {
+  const cats = window.CATEGORIES || [];
+
+  const billSel = document.getElementById('form-bill-category');
+  const bulkSel = document.getElementById('form-bulk-category');
+  const payFilter = document.getElementById('pay-cat-filter');
+  const billFilter = document.getElementById('bill-cat-filter');
+
+  const makeOptions = (includeAll) => {
+    const base = [];
+    if (includeAll) base.push(`<option value="all">Semua Kategori</option>`);
+    base.push('<option value="">-- Pilih Kategori --</option>');
+    cats.forEach(c => base.push(`<option value="${c.id}">${c.icon} ${c.name}</option>`));
+    return base.join('');
+  };
+
+  if (billSel) billSel.innerHTML = makeOptions(false);
+  if (bulkSel) bulkSel.innerHTML = makeOptions(false);
+  if (payFilter) payFilter.innerHTML = makeOptions(true);
+  if (billFilter) billFilter.innerHTML = makeOptions(true);
+}
+
+function getCurrentAcademicYear() {
+  const settings = DataManager.getSettings();
+  return settings.academicYear || '2024/2025';
+}
+
+function getPreviousAcademicYear(year) {
+  const parts = year.split('/').map(Number);
+  if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+    return `${parts[0] - 1}/${parts[1] - 1}`;
+  }
+  return null;
+}
+
+function getCategoryDefaultAmount(categoryId, year = getCurrentAcademicYear()) {
+  return DataManager.getCategoryDefaultAmount(categoryId, year) || 0;
+}
+
+function renderSettings() {
+  const settings = DataManager.getSettings();
+  const yearInput = document.getElementById('settings-academic-year');
+  if (yearInput) yearInput.value = settings.academicYear || '2024/2025';
+  renderCategorySettingsTable();
+}
+
+function saveCategoryNominalSettings() {
+  const yearInput = document.getElementById('settings-academic-year');
+  const year = yearInput?.value.trim() || getCurrentAcademicYear();
+  if (!year) { Utils.showToast('Tahun ajaran harus diisi', 'error'); return; }
+
+  const inputs = Array.from(document.querySelectorAll('[data-default-amount-input]'));
+  if (inputs.length === 0) {
+    Utils.showToast('Tidak ada kategori untuk disimpan.', 'error');
+    return;
+  }
+
+  inputs.forEach(input => {
+    const catId = input.dataset.categoryId;
+    const amount = parseFloat(input.value) || 0;
+    DataManager.setCategoryDefaultAmount(catId, amount, year);
+  });
+
+  const settings = DataManager.getSettings();
+  if (settings.academicYear !== year) {
+    settings.academicYear = year;
+    DataManager.saveSettings(settings);
+  }
+
+  Utils.showToast(`Nominal kategori disimpan untuk tahun ajaran ${year}`, 'success');
+  renderCategorySettingsTable();
+}
+
+function duplicateCategoryNominalSettings() {
+  const yearInput = document.getElementById('settings-academic-year');
+  const year = yearInput?.value.trim() || getCurrentAcademicYear();
+  const previousYear = getPreviousAcademicYear(year);
+  if (!previousYear) { Utils.showToast('Format tahun ajaran tidak valid', 'error'); return; }
+
+  const source = DataManager.getDefaultCategoryAmounts(previousYear);
+  if (!source || Object.keys(source).length === 0) {
+    Utils.showToast(`Tidak ada nominal kategori untuk tahun ajaran ${previousYear}`, 'error');
+    return;
+  }
+
+  DataManager.duplicateCategoryAmounts(previousYear, year);
+  Utils.showToast(`Nominal kategori diduplikasi dari ${previousYear} ke ${year}`, 'success');
+  renderCategorySettingsTable();
+}
+
+function updateBillAmountFromCategoryDefault() {
+  const category = document.getElementById('form-bill-category')?.value;
+  const amountInput = document.getElementById('form-bill-amount');
+  if (!amountInput || !category) return;
+  const amount = getCategoryDefaultAmount(category);
+  if (amount > 0) amountInput.value = amount;
+}
+
+function submitCategoryForm() {
+  const idInput = document.getElementById('form-cat-id');
+  const nameInput = document.getElementById('form-cat-name');
+  const iconInput = document.getElementById('form-cat-icon');
+  const colorInput = document.getElementById('form-cat-color');
+  const typeInput = document.getElementById('form-cat-type');
+
+  if (!idInput || !nameInput || !iconInput || !colorInput) return;
+
+  let id = idInput.value.trim().toLowerCase();
+  const name = nameInput.value.trim();
+  const icon = iconInput.value.trim() || '📋';
+  const color = colorInput.value || '#6366f1';
+  const type = typeInput?.value || 'insidental';
+
+  if (!id || !name) { Utils.showToast('ID dan Nama kategori wajib diisi', 'error'); return; }
+  // sanitize id: remove spaces and invalid characters
+  id = id.replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '');
+
+  const form = document.getElementById('category-form');
+  const editId = form?.dataset?.editId || '';
+
+  if (editId) {
+    // edit mode: only update name/icon/color/type, keep id immutable
+    DataManager.updateCategory(editId, { name, icon, color, type });
+    Utils.showToast('Kategori diperbarui ✅', 'success');
+  } else {
+    // check uniqueness
+    const existing = DataManager.getCategories().find(c => c.id === id);
+    if (existing) { Utils.showToast('ID kategori sudah ada, gunakan ID lain', 'error'); return; }
+    const newCat = { id, name, icon, color, type };
+    DataManager.addCategory(newCat);
+    Utils.showToast('Kategori baru tersimpan ✅', 'success');
+  }
+  // reload global lists and UI
+  loadCategories();
+  // reset form edit state
+  if (form) { form.dataset.editId = ''; document.getElementById('form-cat-id').disabled = false; }
+  closeModal('category-modal');
+  // re-render current views that depend on categories
+  renderPage(currentPage);
+  setTimeout(() => {
+    Charts.renderCategoryChart('chart-category');
+    Charts.renderCategoryChart('report-chart-category');
+  }, 150);
+}
+
+function openCategoryModal(mode = 'add', id = '') {
+  const modal = document.getElementById('category-modal');
+  const title = document.getElementById('category-modal-title');
+  const form = document.getElementById('category-form');
+  const idInput = document.getElementById('form-cat-id');
+  const nameInput = document.getElementById('form-cat-name');
+  const iconInput = document.getElementById('form-cat-icon');
+  const colorInput = document.getElementById('form-cat-color');
+  const typeInput = document.getElementById('form-cat-type');
+
+  if (!form) return;
+  form.dataset.editId = '';
+
+  if (mode === 'edit' && id) {
+    const cat = DataManager.getCategories().find(c => c.id === id);
+    if (!cat) return;
+    title.textContent = '✏️ Edit Kategori';
+    idInput.value = cat.id; idInput.disabled = true;
+    nameInput.value = cat.name || '';
+    iconInput.value = cat.icon || '';
+    colorInput.value = cat.color || '#6366f1';
+    typeInput.value = cat.type || 'insidental';
+    form.dataset.editId = cat.id;
+  } else {
+    title.textContent = '➕ Tambah Kategori';
+    form.reset();
+    idInput.disabled = false;
+    idInput.value = '';
+    colorInput.value = '#6366f1';
+  }
+
+  modal.classList.add('active');
+}
+
+function renderCategorySettingsTable() {
+  const tbody = document.getElementById('category-settings-table');
+  if (!tbody) return;
+  const cats = DataManager.getCategories();
+  const currentYear = getCurrentAcademicYear();
+  tbody.innerHTML = cats.length === 0
+    ? `<tr><td colspan="7" class="empty-state">Belum ada kategori</td></tr>`
+    : cats.map(c => {
+      const defaultAmount = getCategoryDefaultAmount(c.id, currentYear);
+      return `
+      <tr>
+        <td style="font-size:18px">${c.icon}</td>
+        <td>${c.id}</td>
+        <td>${c.name}</td>
+        <td>${c.type}</td>
+        <td><div style="width:28px; height:18px; background:${c.color}; border-radius:4px; border:1px solid #0003"></div></td>
+        <td>
+          <input type="number" class="category-default-amount-input" data-category-id="${c.id}" value="${defaultAmount}" min="0" step="1000" style="width:120px; background:transparent; border:1px solid var(--border); border-radius:8px; padding:6px 8px; color:var(--text-primary);">
+        </td>
+        <td>
+          <div class="action-btns">
+            <button class="btn btn-sm btn-outline" onclick="openCategoryModal('edit','${c.id}')">✏️ Edit</button>
+            <button class="btn btn-sm btn-danger-outline" onclick="deleteCategory('${c.id}')">🗑️ Hapus</button>
+          </div>
+        </td>
+      </tr>
+    `;
+    }).join('');
+}
+
+function deleteCategory(id) {
+  if (!Utils.confirm('Hapus kategori ini? Semua tagihan yang memakai kategori ini tetap tersimpan (kategori akan hilang dari daftar pilihan).')) return;
+  DataManager.deleteCategory(id);
+  loadCategories();
+  renderPage(currentPage);
+  Utils.showToast('Kategori dihapus', 'info');
+}
+
+// ====== STUDENT DELETE ======
+function confirmDeleteStudent() {
+  const modal = document.getElementById('student-detail-modal');
+  const studentId = modal?.dataset?.studentId;
+  if (!studentId) return;
+  if (!Utils.confirm('Hapus siswa ini beserta semua tagihan dan pembayaran terkait?')) return;
+  deleteStudent(studentId);
+  closeModal('student-detail-modal');
+}
+
+function deleteStudent(studentId) {
+  // remove bills and payments related to this student (cascade)
+  const allBills = DataManager.getBills();
+  const removedBillIds = allBills.filter(b => b.studentId === studentId).map(b => b.id);
+  const bills = allBills.filter(b => b.studentId !== studentId);
+  const payments = DataManager.getPayments().filter(p => p.studentId !== studentId && !removedBillIds.includes(p.billId));
+  DataManager.saveBills(bills);
+  DataManager.savePayments(payments);
+  DataManager.deleteStudent(studentId);
+  Utils.showToast('Siswa dan data terkait dihapus', 'info');
+  renderStudents();
+  renderPage(currentPage);
+}
+
+// ====== GLOBAL CLASS FILTER ======
+function handleGlobalClassFilterChange() {
+  const val = document.getElementById('global-class-filter')?.value || 'all';
+  // sync with page filters if present
+  const studentFilter = document.getElementById('student-class-filter');
+  const payFilter = document.getElementById('pay-class-filter');
+  const billFilter = document.getElementById('bill-class-filter');
+  if (studentFilter) studentFilter.value = val;
+  if (payFilter) payFilter.value = val;
+  if (billFilter) billFilter.value = val;
+  // trigger rerender of current page
+  renderPage(currentPage);
 }
 
 // ====== DASHBOARD ======
@@ -151,9 +441,12 @@ function renderDashboard() {
       ? '<div class="empty-state"><span>🎉 Semua tagihan lunas!</span></div>'
       : topUnpaid.map(([sid, amount]) => {
         const s = studentMap[sid];
+        const clsColor = getClassColor(s?.class);
+        const avatarIcon = s?.gender === 'P' ? '👧' : '👦';
+        const avatarBg = hexToRgba(clsColor, 0.12);
         return `
           <div class="tunggakan-item" onclick="navigateTo('students'); setTimeout(()=>openStudentDetail('${sid}'),200)">
-            <div class="tunggakan-avatar">${s?.name?.charAt(0) || '?'}</div>
+            <div class="tunggakan-avatar" style="background:${avatarBg}; color:${clsColor}">${avatarIcon}</div>
             <div class="tunggakan-info">
               <div class="tunggakan-name">${s?.name || '-'}</div>
               <div class="tunggakan-class">${s?.class || '-'}</div>
@@ -192,11 +485,15 @@ function renderStudents() {
       const pct = Utils.getProgressPercent(totalPaid, totalBilled);
       const unpaidCount = pList.filter(p => p.status !== PAYMENT_STATUS.PAID).length;
 
+      const clsColor = getClassColor(s.class);
+      const avatarIcon = s.gender === 'P' ? '👧' : '👦';
+      const cardBg = hexToRgba(clsColor, 0.04);
+      const avatarBg = hexToRgba(clsColor, 0.12);
       return `
-        <div class="student-card" onclick="openStudentDetail('${s.id}')">
+        <div class="student-card" onclick="openStudentDetail('${s.id}')" style="background: linear-gradient(90deg, ${cardBg}, var(--bg-card));">
           <div class="student-card-header">
-            <div class="student-avatar ${s.gender === 'P' ? 'female' : 'male'}">
-              ${s.name.charAt(0)}
+            <div class="student-avatar" style="background:${avatarBg}; color:${clsColor}">
+              ${avatarIcon}
             </div>
             <div class="student-info">
               <div class="student-name">${s.name}</div>
@@ -246,6 +543,11 @@ function openStudentDetail(studentId) {
   const modal = document.getElementById('student-detail-modal');
   modal.classList.add('active');
   modal.dataset.studentId = studentId;
+
+  const detailAvatar = document.getElementById('detail-avatar');
+  const clsColor = getClassColor(student.class);
+  const avatarIcon = student.gender === 'P' ? '👧' : '👦';
+  if (detailAvatar) { detailAvatar.textContent = avatarIcon; detailAvatar.style.background = hexToRgba(clsColor, 0.14); detailAvatar.style.color = clsColor; }
 
   document.getElementById('detail-student-name').textContent = student.name;
   document.getElementById('detail-student-meta').textContent = `${student.nis} · Kelas ${student.class}`;
@@ -330,11 +632,14 @@ function renderPayments() {
       const badge = Utils.getStatusBadge(p.status);
       const bill = billMap[p.billId];
       const remaining = p.amount - p.paidAmount;
+      const clsColor = getClassColor(s?.class);
+      const avatarIcon = s?.gender === 'P' ? '👧' : '👦';
+      const avatarBg = hexToRgba(clsColor, 0.12);
       return `
         <tr>
           <td>
             <div class="tbl-student">
-              <div class="tbl-avatar ${s?.gender === 'P' ? 'female' : 'male'}">${s?.name?.charAt(0) || '?'}</div>
+              <div class="tbl-avatar" style="background:${avatarBg}; color:${clsColor}">${avatarIcon}</div>
               <div>
                 <div class="tbl-name">${s?.name || '-'}</div>
                 <div class="tbl-meta">${s?.class || '-'} · ${s?.nis || '-'}</div>
@@ -396,11 +701,14 @@ function renderBills() {
       const p = paymentByBill[b.id];
       const badge = p ? Utils.getStatusBadge(p.status) : Utils.getStatusBadge('belum');
       const paidAmt = p?.paidAmount || 0;
+      const clsColor = getClassColor(s?.class);
+      const avatarIcon = s?.gender === 'P' ? '👧' : '👦';
+      const avatarBg = hexToRgba(clsColor, 0.12);
       return `
         <tr>
           <td>
             <div class="tbl-student">
-              <div class="tbl-avatar ${s?.gender === 'P' ? 'female' : 'male'}">${s?.name?.charAt(0) || '?'}</div>
+              <div class="tbl-avatar" style="background:${avatarBg}; color:${clsColor}">${avatarIcon}</div>
               <div>
                 <div class="tbl-name">${s?.name || '-'}</div>
                 <div class="tbl-meta">${s?.class || '-'}</div>
@@ -613,6 +921,7 @@ function openAddBillModal() {
   const students = DataManager.getStudents();
   sel.innerHTML = '<option value="">-- Pilih Siswa --</option>' +
     students.map(s => `<option value="${s.id}">${s.name} (${s.class})</option>`).join('');
+  updateBillAmountFromCategoryDefault();
 }
 
 function submitBillForm() {
@@ -770,6 +1079,9 @@ function importBackupData(event) {
 document.addEventListener('DOMContentLoaded', () => {
   DataManager.init();
 
+  // load categories into global CATEGORIES and populate selects
+  loadCategories();
+
   // Nav click
   document.querySelectorAll('.nav-item').forEach(el => {
     el.addEventListener('click', () => navigateTo(el.dataset.page));
@@ -792,6 +1104,14 @@ document.addEventListener('DOMContentLoaded', () => {
   if (studentSearch) studentSearch.addEventListener('input', Utils.debounce(renderStudents, 200));
   document.getElementById('student-class-filter')?.addEventListener('change', renderStudents);
 
+  // Global class filter (topbar)
+  const globalClass = document.getElementById('global-class-filter');
+  if (globalClass) {
+    globalClass.addEventListener('change', handleGlobalClassFilterChange);
+    // initialize sync
+    handleGlobalClassFilterChange();
+  }
+
   // Payment search & filter
   ['pay-search', 'pay-cat-filter', 'pay-status-filter', 'pay-class-filter'].forEach(id => {
     const el = document.getElementById(id);
@@ -805,6 +1125,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el) el.addEventListener(el.tagName === 'INPUT' ? 'input' : 'change',
       el.tagName === 'INPUT' ? Utils.debounce(renderBills, 200) : renderBills);
   });
+
+  document.getElementById('form-bill-category')?.addEventListener('change', updateBillAmountFromCategoryDefault);
 
   // Detail modal filter
   ['detail-cat-filter', 'detail-status-filter'].forEach(id => {
