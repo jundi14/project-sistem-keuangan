@@ -217,6 +217,7 @@
           </div>
           <div class="btn-group">
             <button class="btn btn-outline" onclick="openImportStudentModal()">📥 Import Siswa</button>
+            <button class="btn btn-outline" onclick="openBulkEditStudentModal()">✏️ Edit Massal Kelas</button>
             <button class="btn btn-primary" onclick="openAddStudentModal()">➕ Tambah Siswa</button>
           </div>
         </div>
@@ -549,26 +550,57 @@
 
         <div class="card mb-4">
           <div class="card-header">
-            <div class="card-title">🔼 Naik Kelas & Mulai KBM</div>
+            <div class="card-title">�🧾 Pengaturan Seragam & Buku</div>
           </div>
           <div class="card-body">
-            <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; margin-bottom:12px;">
-              <div class="form-group" style="flex:1; min-width:180px;">
-                <label class="form-label">Tahun Ajaran Baru</label>
-                <input id="settings-promotion-year" type="text" readonly style="background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:8px 10px; border-radius:8px; width:100%;">
+            <div class="grid-2" style="gap:16px; margin-bottom:16px;">
+              <div class="form-group">
+                <label class="form-label">Harga Seragam Laki-laki</label>
+                <input id="settings-uniform-price-L" type="number" min="0" step="1000" placeholder="Rp 0" style="background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:8px 10px; border-radius:8px; width:100%;">
               </div>
-              <div class="form-group" style="flex:1; min-width:220px;">
-                <label class="form-label">Tanggal Mulai KBM</label>
-                <input id="settings-promotion-kbm-date" type="date" style="background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:8px 10px; border-radius:8px; width:100%;">
+              <div class="form-group">
+                <label class="form-label">Harga Seragam Perempuan</label>
+                <input id="settings-uniform-price-P" type="number" min="0" step="1000" placeholder="Rp 0" style="background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:8px 10px; border-radius:8px; width:100%;">
               </div>
-              <button class="btn btn-primary" style="height:42px;" onclick="promoteStudentsToNextYear()">🔼 Naik Kelas</button>
             </div>
-            <div style="color:var(--text-secondary); font-size:13px;">
-              Jalankan naik kelas untuk memindahkan semua siswa ke tahun ajaran berikutnya dan menyimpan tanggal mulai KBM aktif.
+            <div class="form-group" style="margin-bottom:16px;">
+              <label class="form-label">Rincian Seragam</label>
+              <textarea id="settings-uniform-details" rows="3" placeholder="Contoh: Baju putih biru, celana, jilbab, badge" style="width:100%; background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:10px; border-radius:8px;"></textarea>
             </div>
+            <div style="display:grid; grid-template-columns:repeat(3,minmax(180px,1fr)); gap:12px; margin-bottom:16px;">
+              <div class="form-group">
+                <label class="form-label">Harga Buku Kelas I</label>
+                <input id="settings-book-price-I" type="number" min="0" step="1000" placeholder="Rp 0" style="background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:8px 10px; border-radius:8px; width:100%;">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Harga Buku Kelas II</label>
+                <input id="settings-book-price-II" type="number" min="0" step="1000" placeholder="Rp 0" style="background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:8px 10px; border-radius:8px; width:100%;">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Harga Buku Kelas III</label>
+                <input id="settings-book-price-III" type="number" min="0" step="1000" placeholder="Rp 0" style="background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:8px 10px; border-radius:8px; width:100%;">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Harga Buku Kelas IV</label>
+                <input id="settings-book-price-IV" type="number" min="0" step="1000" placeholder="Rp 0" style="background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:8px 10px; border-radius:8px; width:100%;">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Harga Buku Kelas V</label>
+                <input id="settings-book-price-V" type="number" min="0" step="1000" placeholder="Rp 0" style="background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:8px 10px; border-radius:8px; width:100%;">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Harga Buku Kelas VI</label>
+                <input id="settings-book-price-VI" type="number" min="0" step="1000" placeholder="Rp 0" style="background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:8px 10px; border-radius:8px; width:100%;">
+              </div>
+            </div>
+            <button class="btn btn-outline" onclick="saveUniformBookSettings()">💾 Simpan Pengaturan Seragam & Buku</button>
           </div>
         </div>
-      </div>
+
+        <div class="card mb-4">
+          <div class="card-header">
+            <div class="card-title">🔼 Naik Kelas & Mulai KBM</div>
+          </div>
 
     </div><!-- end page-container -->
   </div><!-- end main-content -->
@@ -641,6 +673,108 @@
         <button class="btn btn-outline" type="button" style="flex:1" onclick="closeModal('import-student-modal')">Batal</button>
         <button class="btn btn-primary" type="button" style="flex:1" onclick="submitImportStudents()">Import Data</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk Edit Student Modal -->
+<div class="modal-backdrop" id="bulk-edit-student-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">✏️ Edit Massal Siswa per Kelas</div>
+      <button class="modal-close" onclick="closeModal('bulk-edit-student-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Kelas Sumber</label>
+        <select id="bulk-edit-source-class">
+          <option value="">-- Pilih Kelas Sumber --</option>
+          <option>I</option>
+          <option>II</option>
+          <option>III</option>
+          <option>IV</option>
+          <option>V</option>
+          <option>VI</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Kelas Target</label>
+        <select id="bulk-edit-target-class">
+          <option value="">-- Pilih Kelas Target --</option>
+          <option>I</option>
+          <option>II</option>
+          <option>III</option>
+          <option>IV</option>
+          <option>V</option>
+          <option>VI</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Catatan (opsional)</label>
+        <textarea id="bulk-edit-note" rows="3" placeholder="Contoh: naik kelas sekaligus karena selesai tahun ajaran" style="width:100%; background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:10px; border-radius:8px;"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('bulk-edit-student-modal')">Batal</button>
+      <button class="btn btn-primary" onclick="submitBulkEditStudents()">✅ Simpan Perubahan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Uniform & Book Condition Modal -->
+<div class="modal-backdrop" id="uniform-book-condition-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="uniform-book-condition-title">⚙️ Kondisi Harga</div>
+      <button class="modal-close" onclick="closeModal('uniform-book-condition-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="uniform-condition-section" style="display:none;">
+        <div class="form-group">
+          <label class="form-label">Harga Seragam Laki-laki</label>
+          <input id="condition-uniform-price-L" type="number" min="0" step="1000" placeholder="Rp 0" style="background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:8px 10px; border-radius:8px; width:100%;">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Harga Seragam Perempuan</label>
+          <input id="condition-uniform-price-P" type="number" min="0" step="1000" placeholder="Rp 0" style="background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:8px 10px; border-radius:8px; width:100%;">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Rincian Seragam</label>
+          <textarea id="condition-uniform-details" rows="3" style="width:100%; background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:10px; border-radius:8px;"></textarea>
+        </div>
+      </div>
+      <div id="book-condition-section" style="display:none;">
+        <div style="display:grid; grid-template-columns:repeat(3,minmax(140px,1fr)); gap:12px;">
+          <div class="form-group">
+            <label class="form-label">Harga Buku Kelas I</label>
+            <input id="condition-book-price-I" type="number" min="0" step="1000" placeholder="Rp 0" style="background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:8px 10px; border-radius:8px; width:100%;">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Harga Buku Kelas II</label>
+            <input id="condition-book-price-II" type="number" min="0" step="1000" placeholder="Rp 0" style="background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:8px 10px; border-radius:8px; width:100%;">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Harga Buku Kelas III</label>
+            <input id="condition-book-price-III" type="number" min="0" step="1000" placeholder="Rp 0" style="background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:8px 10px; border-radius:8px; width:100%;">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Harga Buku Kelas IV</label>
+            <input id="condition-book-price-IV" type="number" min="0" step="1000" placeholder="Rp 0" style="background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:8px 10px; border-radius:8px; width:100%;">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Harga Buku Kelas V</label>
+            <input id="condition-book-price-V" type="number" min="0" step="1000" placeholder="Rp 0" style="background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:8px 10px; border-radius:8px; width:100%;">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Harga Buku Kelas VI</label>
+            <input id="condition-book-price-VI" type="number" min="0" step="1000" placeholder="Rp 0" style="background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:8px 10px; border-radius:8px; width:100%;">
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('uniform-book-condition-modal')">Batal</button>
+      <button class="btn btn-primary" onclick="saveUniformBookConditionSettings()">✅ Simpan Kondisi</button>
     </div>
   </div>
 </div>

@@ -70,12 +70,41 @@ const DataManager = {
             lainnya: 0,
           },
         },
+        academicConfigs: {
+          '2024/2025': {
+            uniform: {
+              L: 250000,
+              P: 270000,
+            },
+            uniformDetails: 'Seragam SDIT terdiri dari baju putih biru, celana/pelengkap, dan badge sekolah.',
+            bookPrices: {
+              I: 95000,
+              II: 100000,
+              III: 110000,
+              IV: 120000,
+              V: 130000,
+              VI: 140000,
+            },
+          },
+        },
       }));
     }
 
     const savedSettings = JSON.parse(localStorage.getItem(DB_KEYS.SETTINGS) || '{}');
     if (!savedSettings.academicYear) savedSettings.academicYear = '2024/2025';
     if (!savedSettings.defaultCategoryAmounts) savedSettings.defaultCategoryAmounts = { [savedSettings.academicYear]: {} };
+    if (!savedSettings.academicConfigs) savedSettings.academicConfigs = { [savedSettings.academicYear]: {
+      uniform: { L: 250000, P: 270000 },
+      uniformDetails: 'Seragam SDIT terdiri dari baju putih biru, celana/pelengkap, dan badge sekolah.',
+      bookPrices: { I: 95000, II: 100000, III: 110000, IV: 120000, V: 130000, VI: 140000 },
+    }};
+    if (!savedSettings.academicConfigs[savedSettings.academicYear]) {
+      savedSettings.academicConfigs[savedSettings.academicYear] = {
+        uniform: { L: 250000, P: 270000 },
+        uniformDetails: 'Seragam SDIT terdiri dari baju putih biru, celana/pelengkap, dan badge sekolah.',
+        bookPrices: { I: 95000, II: 100000, III: 110000, IV: 120000, V: 130000, VI: 140000 },
+      };
+    }
     localStorage.setItem(DB_KEYS.SETTINGS, JSON.stringify(savedSettings));
   },
 
@@ -110,10 +139,35 @@ const DataManager = {
     });
   },
 
+  getAcademicYearConfig(year) {
+    const settings = this.getSettings();
+    const config = (settings.academicConfigs || {})[year];
+    return config || {
+      uniform: { L: 0, P: 0 },
+      uniformDetails: '',
+      bookPrices: { I: 0, II: 0, III: 0, IV: 0, V: 0, VI: 0 },
+    };
+  },
+
+  setAcademicYearConfig(year, config) {
+    const settings = this.getSettings();
+    if (!settings.academicConfigs) settings.academicConfigs = {};
+    settings.academicConfigs[year] = config;
+    this.saveSettings(settings);
+  },
+
   ensureAcademicYear(year) {
     const settings = this.getSettings();
     if (!settings.defaultCategoryAmounts) settings.defaultCategoryAmounts = {};
     if (!settings.defaultCategoryAmounts[year]) settings.defaultCategoryAmounts[year] = {};
+    if (!settings.academicConfigs) settings.academicConfigs = {};
+    if (!settings.academicConfigs[year]) {
+      settings.academicConfigs[year] = {
+        uniform: { L: 0, P: 0 },
+        uniformDetails: '',
+        bookPrices: { I: 0, II: 0, III: 0, IV: 0, V: 0, VI: 0 },
+      };
+    }
     if (!settings.academicYear) settings.academicYear = year;
     this.saveSettings(settings);
     return settings;
@@ -123,6 +177,14 @@ const DataManager = {
     const settings = this.getSettings();
     if (!settings.defaultCategoryAmounts) settings.defaultCategoryAmounts = {};
     if (!settings.defaultCategoryAmounts[year]) settings.defaultCategoryAmounts[year] = {};
+    if (!settings.academicConfigs) settings.academicConfigs = {};
+    if (!settings.academicConfigs[year]) {
+      settings.academicConfigs[year] = {
+        uniform: { L: 0, P: 0 },
+        uniformDetails: '',
+        bookPrices: { I: 0, II: 0, III: 0, IV: 0, V: 0, VI: 0 },
+      };
+    }
     settings.academicYear = year;
     this.saveSettings(settings);
     return settings;
@@ -136,11 +198,30 @@ const DataManager = {
     this.saveSettings(settings);
   },
 
+  getUniformPrice(gender, year) {
+    const config = this.getAcademicYearConfig(year);
+    return config.uniform?.[gender] || 0;
+  },
+
+  getUniformDetails(year) {
+    const config = this.getAcademicYearConfig(year);
+    return config.uniformDetails || '';
+  },
+
+  getBookPriceByClass(cls, year) {
+    const config = this.getAcademicYearConfig(year);
+    return config.bookPrices?.[cls] || 0;
+  },
+
   duplicateCategoryAmounts(sourceYear, targetYear) {
     const settings = this.getSettings();
     if (!settings.defaultCategoryAmounts) settings.defaultCategoryAmounts = {};
     const source = settings.defaultCategoryAmounts[sourceYear] || {};
     settings.defaultCategoryAmounts[targetYear] = { ...source };
+    if (!settings.academicConfigs) settings.academicConfigs = {};
+    if (settings.academicConfigs[sourceYear]) {
+      settings.academicConfigs[targetYear] = { ...settings.academicConfigs[sourceYear] };
+    }
     this.saveSettings(settings);
   },
 

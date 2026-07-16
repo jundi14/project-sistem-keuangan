@@ -175,10 +175,12 @@ function renderSettings() {
   const settings = DataManager.getSettings();
   const yearInput = document.getElementById('settings-academic-year');
   const promotionYear = document.getElementById('settings-promotion-year');
-  if (yearInput) yearInput.value = settings.academicYear || '2024/2025';
+  const selectedYear = yearInput?.value.trim() || settings.academicYear || '2024/2025';
+  if (yearInput) yearInput.value = selectedYear;
   renderAcademicYearList();
-  if (promotionYear) promotionYear.value = getNextAcademicYear(getCurrentAcademicYear()) || '';
   renderCategorySettingsTable();
+  renderUniformBookSettings(selectedYear);
+  if (promotionYear) promotionYear.value = getNextAcademicYear(selectedYear) || '';
 }
 
 function saveCategoryNominalSettings() {
@@ -236,7 +238,7 @@ function duplicateCategoryNominalSettings() {
 
   DataManager.duplicateCategoryAmounts(previousYear, year);
   Utils.showToast(`Nominal kategori diduplikasi dari ${previousYear} ke ${year}`, 'success');
-  renderCategorySettingsTable();
+  renderSettings();
 }
 
 function saveCategoryDefaultAmount(categoryId) {
@@ -248,15 +250,148 @@ function saveCategoryDefaultAmount(categoryId) {
     return;
   }
   const amount = parseFloat(input.value) || 0;
+  DataManager.ensureAcademicYear(year);
   DataManager.setCategoryDefaultAmount(categoryId, amount, year);
   Utils.showToast(`Nominal kategori ${categoryId} disimpan untuk tahun ajaran ${year}`, 'success');
 }
 
+function renderUniformBookSettings(year) {
+  const config = DataManager.getAcademicYearConfig(year);
+  const uniformL = document.getElementById('settings-uniform-price-L');
+  const uniformP = document.getElementById('settings-uniform-price-P');
+  const uniformDetails = document.getElementById('settings-uniform-details');
+  const bookInputs = {
+    I: document.getElementById('settings-book-price-I'),
+    II: document.getElementById('settings-book-price-II'),
+    III: document.getElementById('settings-book-price-III'),
+    IV: document.getElementById('settings-book-price-IV'),
+    V: document.getElementById('settings-book-price-V'),
+    VI: document.getElementById('settings-book-price-VI'),
+  };
+
+  if (uniformL) uniformL.value = config.uniform?.L || 0;
+  if (uniformP) uniformP.value = config.uniform?.P || 0;
+  if (uniformDetails) uniformDetails.value = config.uniformDetails || '';
+  Object.entries(bookInputs).forEach(([cls, input]) => {
+    if (input) input.value = config.bookPrices?.[cls] || 0;
+  });
+}
+
+function saveUniformBookSettings() {
+  const yearInput = document.getElementById('settings-academic-year');
+  const year = yearInput?.value.trim() || getCurrentAcademicYear();
+  if (!year) { Utils.showToast('Tahun ajaran harus diisi', 'error'); return; }
+
+  const uniformL = parseFloat(document.getElementById('settings-uniform-price-L')?.value) || 0;
+  const uniformP = parseFloat(document.getElementById('settings-uniform-price-P')?.value) || 0;
+  const uniformDetails = document.getElementById('settings-uniform-details')?.value.trim() || '';
+  const bookPrices = {
+    I: parseFloat(document.getElementById('settings-book-price-I')?.value) || 0,
+    II: parseFloat(document.getElementById('settings-book-price-II')?.value) || 0,
+    III: parseFloat(document.getElementById('settings-book-price-III')?.value) || 0,
+    IV: parseFloat(document.getElementById('settings-book-price-IV')?.value) || 0,
+    V: parseFloat(document.getElementById('settings-book-price-V')?.value) || 0,
+    VI: parseFloat(document.getElementById('settings-book-price-VI')?.value) || 0,
+  };
+
+  DataManager.ensureAcademicYear(year);
+  DataManager.setAcademicYearConfig(year, {
+    uniform: { L: uniformL, P: uniformP },
+    uniformDetails,
+    bookPrices,
+  });
+
+  const settings = DataManager.getSettings();
+  if (settings.academicYear !== year) {
+    settings.academicYear = year;
+    DataManager.saveSettings(settings);
+  }
+
+  Utils.showToast(`Pengaturan seragam & buku disimpan untuk tahun ajaran ${year}`, 'success');
+  renderSettings();
+}
+
+function openUniformBookConditionModal(categoryId) {
+  const title = document.getElementById('uniform-book-condition-title');
+  const seragamSection = document.getElementById('uniform-condition-section');
+  const bukuSection = document.getElementById('book-condition-section');
+  const year = getCurrentAcademicYear();
+  const config = DataManager.getAcademicYearConfig(year);
+
+  if (title) title.textContent = categoryId === 'seragam' ? '⚙️ Kondisi Seragam' : '⚙️ Kondisi Buku';
+  if (seragamSection) seragamSection.style.display = categoryId === 'seragam' ? 'block' : 'none';
+  if (bukuSection) bukuSection.style.display = categoryId === 'buku' ? 'block' : 'none';
+
+  if (categoryId === 'seragam') {
+    document.getElementById('condition-uniform-price-L').value = config.uniform?.L || 0;
+    document.getElementById('condition-uniform-price-P').value = config.uniform?.P || 0;
+    document.getElementById('condition-uniform-details').value = config.uniformDetails || '';
+  }
+
+  if (categoryId === 'buku') {
+    ['I','II','III','IV','V','VI'].forEach(cls => {
+      const input = document.getElementById(`condition-book-price-${cls}`);
+      if (input) input.value = config.bookPrices?.[cls] || 0;
+    });
+  }
+
+  document.getElementById('uniform-book-condition-modal').dataset.categoryId = categoryId;
+  document.getElementById('uniform-book-condition-modal').classList.add('active');
+}
+
+function saveUniformBookConditionSettings() {
+  const year = getCurrentAcademicYear();
+  const categoryId = document.getElementById('uniform-book-condition-modal').dataset.categoryId;
+  if (!categoryId) { Utils.showToast('Kategori tidak valid.', 'error'); return; }
+
+  const config = DataManager.getAcademicYearConfig(year);
+
+  if (categoryId === 'seragam') {
+    config.uniform = {
+      L: parseFloat(document.getElementById('condition-uniform-price-L')?.value) || 0,
+      P: parseFloat(document.getElementById('condition-uniform-price-P')?.value) || 0,
+    };
+    config.uniformDetails = document.getElementById('condition-uniform-details')?.value.trim() || '';
+  }
+
+  if (categoryId === 'buku') {
+    config.bookPrices = {
+      I: parseFloat(document.getElementById('condition-book-price-I')?.value) || 0,
+      II: parseFloat(document.getElementById('condition-book-price-II')?.value) || 0,
+      III: parseFloat(document.getElementById('condition-book-price-III')?.value) || 0,
+      IV: parseFloat(document.getElementById('condition-book-price-IV')?.value) || 0,
+      V: parseFloat(document.getElementById('condition-book-price-V')?.value) || 0,
+      VI: parseFloat(document.getElementById('condition-book-price-VI')?.value) || 0,
+    };
+  }
+
+  DataManager.ensureAcademicYear(year);
+  DataManager.setAcademicYearConfig(year, config);
+  Utils.showToast(`Kondisi harga ${categoryId === 'seragam' ? 'seragam' : 'buku'} disimpan untuk tahun ajaran ${year}`, 'success');
+  closeModal('uniform-book-condition-modal');
+  renderSettings();
+}
+
 function updateBillAmountFromCategoryDefault() {
   const category = document.getElementById('form-bill-category')?.value;
+  const studentId = document.getElementById('form-bill-student')?.value;
   const amountInput = document.getElementById('form-bill-amount');
   if (!amountInput || !category) return;
-  const amount = getCategoryDefaultAmount(category);
+
+  const year = getCurrentAcademicYear();
+  let amount = getCategoryDefaultAmount(category, year);
+  if (studentId) {
+    const student = DataManager.getStudents().find(s => s.id === studentId);
+    if (student) {
+      if (category === 'seragam') {
+        amount = DataManager.getUniformPrice(student.gender, year) || amount;
+      }
+      if (category === 'buku') {
+        amount = DataManager.getBookPriceByClass(student.class, year) || amount;
+      }
+    }
+  }
+
   if (amount > 0) amountInput.value = amount;
 }
 
@@ -390,6 +525,7 @@ function renderCategorySettingsTable() {
         <td>
           <div class="action-btns">
             <button class="btn btn-sm btn-outline" onclick="openCategoryModal('edit','${c.id}')">✏️ Edit</button>
+            ${['seragam','buku'].includes(c.id) ? `<button class="btn btn-sm btn-secondary" onclick="openUniformBookConditionModal('${c.id}')">⚙️ Kondisi</button>` : ''}
             <button class="btn btn-sm btn-outline" onclick="saveCategoryDefaultAmount('${c.id}')">💾 Simpan Nominal</button>
             <button class="btn btn-sm btn-danger-outline" onclick="deleteCategory('${c.id}')">🗑️ Hapus</button>
           </div>
@@ -1166,6 +1302,53 @@ function submitImportStudents() {
   }
 }
 
+function openBulkEditStudentModal() {
+  document.getElementById('bulk-edit-source-class').value = '';
+  document.getElementById('bulk-edit-target-class').value = '';
+  document.getElementById('bulk-edit-note').value = '';
+  document.getElementById('bulk-edit-student-modal').classList.add('active');
+}
+
+function submitBulkEditStudents() {
+  const sourceClass = document.getElementById('bulk-edit-source-class')?.value;
+  const targetClass = document.getElementById('bulk-edit-target-class')?.value;
+  const note = document.getElementById('bulk-edit-note')?.value.trim();
+
+  if (!sourceClass || !targetClass) {
+    Utils.showToast('Pilih kelas sumber dan target.', 'error');
+    return;
+  }
+  if (sourceClass === targetClass) {
+    Utils.showToast('Kelas target harus berbeda dari kelas sumber.', 'error');
+    return;
+  }
+
+  const students = DataManager.getStudents();
+  let updatedCount = 0;
+  const updatedStudents = students.map(student => {
+    if (student.class === sourceClass) {
+      updatedCount += 1;
+      const academicHistory = student.academicHistory || {};
+      const currentYear = getCurrentAcademicYear();
+      if (!academicHistory[currentYear]) academicHistory[currentYear] = {};
+      academicHistory[currentYear].class = targetClass;
+      return { ...student, class: targetClass, academicHistory };
+    }
+    return student;
+  });
+
+  if (updatedCount === 0) {
+    Utils.showToast(`Tidak ada siswa di kelas ${sourceClass}.`, 'warning');
+    return;
+  }
+
+  DataManager.saveStudents(updatedStudents);
+  Utils.showToast(`Berhasil mengubah ${updatedCount} siswa dari kelas ${sourceClass} ke ${targetClass}${note ? ' — ' + note : ''}`, 'success');
+  closeModal('bulk-edit-student-modal');
+  renderStudents();
+  renderPage(currentPage);
+}
+
 function exportBackupData() {
   const data = {
     students: DataManager.getStudents(),
@@ -1262,9 +1445,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('form-bill-category')?.addEventListener('change', updateBillAmountFromCategoryDefault);
+  document.getElementById('form-bill-student')?.addEventListener('change', updateBillAmountFromCategoryDefault);
   document.getElementById('settings-academic-year')?.addEventListener('change', () => {
     const year = document.getElementById('settings-academic-year').value.trim();
     if (year) {
+      DataManager.setAcademicYear(year);
       DataManager.ensureAcademicYear(year);
       renderSettings();
     }
