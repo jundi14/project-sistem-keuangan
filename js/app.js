@@ -179,7 +179,6 @@ function renderSettings() {
   if (yearInput) yearInput.value = selectedYear;
   renderAcademicYearList();
   renderCategorySettingsTable();
-  renderUniformBookSettings(selectedYear);
   if (promotionYear) promotionYear.value = getNextAcademicYear(selectedYear) || '';
 }
 
@@ -253,62 +252,6 @@ function saveCategoryDefaultAmount(categoryId) {
   DataManager.ensureAcademicYear(year);
   DataManager.setCategoryDefaultAmount(categoryId, amount, year);
   Utils.showToast(`Nominal kategori ${categoryId} disimpan untuk tahun ajaran ${year}`, 'success');
-}
-
-function renderUniformBookSettings(year) {
-  const config = DataManager.getAcademicYearConfig(year);
-  const uniformL = document.getElementById('settings-uniform-price-L');
-  const uniformP = document.getElementById('settings-uniform-price-P');
-  const uniformDetails = document.getElementById('settings-uniform-details');
-  const bookInputs = {
-    I: document.getElementById('settings-book-price-I'),
-    II: document.getElementById('settings-book-price-II'),
-    III: document.getElementById('settings-book-price-III'),
-    IV: document.getElementById('settings-book-price-IV'),
-    V: document.getElementById('settings-book-price-V'),
-    VI: document.getElementById('settings-book-price-VI'),
-  };
-
-  if (uniformL) uniformL.value = config.uniform?.L || 0;
-  if (uniformP) uniformP.value = config.uniform?.P || 0;
-  if (uniformDetails) uniformDetails.value = config.uniformDetails || '';
-  Object.entries(bookInputs).forEach(([cls, input]) => {
-    if (input) input.value = config.bookPrices?.[cls] || 0;
-  });
-}
-
-function saveUniformBookSettings() {
-  const yearInput = document.getElementById('settings-academic-year');
-  const year = yearInput?.value.trim() || getCurrentAcademicYear();
-  if (!year) { Utils.showToast('Tahun ajaran harus diisi', 'error'); return; }
-
-  const uniformL = parseFloat(document.getElementById('settings-uniform-price-L')?.value) || 0;
-  const uniformP = parseFloat(document.getElementById('settings-uniform-price-P')?.value) || 0;
-  const uniformDetails = document.getElementById('settings-uniform-details')?.value.trim() || '';
-  const bookPrices = {
-    I: parseFloat(document.getElementById('settings-book-price-I')?.value) || 0,
-    II: parseFloat(document.getElementById('settings-book-price-II')?.value) || 0,
-    III: parseFloat(document.getElementById('settings-book-price-III')?.value) || 0,
-    IV: parseFloat(document.getElementById('settings-book-price-IV')?.value) || 0,
-    V: parseFloat(document.getElementById('settings-book-price-V')?.value) || 0,
-    VI: parseFloat(document.getElementById('settings-book-price-VI')?.value) || 0,
-  };
-
-  DataManager.ensureAcademicYear(year);
-  DataManager.setAcademicYearConfig(year, {
-    uniform: { L: uniformL, P: uniformP },
-    uniformDetails,
-    bookPrices,
-  });
-
-  const settings = DataManager.getSettings();
-  if (settings.academicYear !== year) {
-    settings.academicYear = year;
-    DataManager.saveSettings(settings);
-  }
-
-  Utils.showToast(`Pengaturan seragam & buku disimpan untuk tahun ajaran ${year}`, 'success');
-  renderSettings();
 }
 
 function openUniformBookConditionModal(categoryId) {
@@ -1228,6 +1171,201 @@ function exportReportPdf() {
     y: 20,
     html2canvas: { scale: 2, backgroundColor: '#ffffff' },
   });
+}
+
+// ====== EXPORT FUNCTIONS ======
+function exportDetailExcel() {
+  const bills = DataManager.getBills();
+  const payments = DataManager.getPayments();
+  const students = DataManager.getStudents();
+  const categories = DataManager.getCategories();
+  const school = DataManager.getSettings().schoolName || 'SDIT Al Muttaqin';
+
+  const excelData = [];
+  
+  // Header
+  excelData.push(['LAPORAN DETAIL KEUANGAN', '', '', '', '', '']);
+  excelData.push([school, '', '', '', '', '']);
+  excelData.push([`Tanggal Laporan: ${new Date().toLocaleDateString('id-ID')}`, '', '', '', '', '']);
+  excelData.push([]);
+  excelData.push(['NIS', 'Nama Siswa', 'Kelas', 'Kategori', 'Keterangan', 'Nominal', 'Terbayar', 'Sisa', 'Tanggal Jatuh Tempo']);
+
+  bills.forEach(bill => {
+    const student = students.find(s => s.id === bill.studentId);
+    const cat = categories.find(c => c.id === bill.category);
+    const billPayments = payments.filter(p => p.billId === bill.id);
+    const totalPaid = billPayments.reduce((sum, p) => sum + p.paidAmount, 0);
+    const remaining = bill.amount - totalPaid;
+
+    excelData.push([
+      student?.nis || '',
+      student?.name || '',
+      student?.class || '',
+      cat?.name || bill.category,
+      bill.description,
+      bill.amount,
+      totalPaid,
+      remaining,
+      new Date(bill.dueDate).toLocaleDateString('id-ID'),
+    ]);
+  });
+
+  const workbook = XLSX.utils.book_new();
+  const worksheet = XLSX.utils.aoa_to_sheet(excelData);
+  worksheet['!cols'] = [
+    { wch: 12 },
+    { wch: 20 },
+    { wch: 8 },
+    { wch: 15 },
+    { wch: 20 },
+    { wch: 12 },
+    { wch: 12 },
+    { wch: 12 },
+    { wch: 18 },
+  ];
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Detail Keuangan');
+  XLSX.writeFile(workbook, `Laporan_Detail_${new Date().toISOString().split('T')[0]}.xlsx`);
+  Utils.showToast('Laporan detail berhasil diekspor ke Excel', 'success');
+}
+
+function exportStudentSummaryExcel() {
+  const bills = DataManager.getBills();
+  const payments = DataManager.getPayments();
+  const students = DataManager.getStudents();
+  const school = DataManager.getSettings().schoolName || 'SDIT Al Muttaqin';
+
+  const excelData = [];
+  
+  // Header
+  excelData.push(['REKAP KEUANGAN PER SISWA', '', '', '', '', '']);
+  excelData.push([school, '', '', '', '', '']);
+  excelData.push([`Tanggal Laporan: ${new Date().toLocaleDateString('id-ID')}`, '', '', '', '', '']);
+  excelData.push([]);
+  excelData.push(['NIS', 'Nama Siswa', 'Kelas', 'Total Tagihan', 'Total Terbayar', 'Total Tunggakan', 'Status']);
+
+  students.forEach(student => {
+    const studentBills = bills.filter(b => b.studentId === student.id);
+    let totalBilled = 0;
+    let totalPaid = 0;
+
+    studentBills.forEach(bill => {
+      totalBilled += bill.amount;
+      const billPayments = payments.filter(p => p.billId === bill.id);
+      totalPaid += billPayments.reduce((sum, p) => sum + p.paidAmount, 0);
+    });
+
+    const remaining = totalBilled - totalPaid;
+    let status = 'Lunas';
+    if (remaining > 0 && totalPaid > 0) status = 'Cicilan';
+    if (remaining > 0 && totalPaid === 0) status = 'Belum Bayar';
+
+    excelData.push([
+      student.nis,
+      student.name,
+      student.class,
+      totalBilled,
+      totalPaid,
+      remaining,
+      status,
+    ]);
+  });
+
+  const workbook = XLSX.utils.book_new();
+  const worksheet = XLSX.utils.aoa_to_sheet(excelData);
+  worksheet['!cols'] = [
+    { wch: 12 },
+    { wch: 20 },
+    { wch: 8 },
+    { wch: 15 },
+    { wch: 15 },
+    { wch: 15 },
+    { wch: 12 },
+  ];
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Rekap Siswa');
+  XLSX.writeFile(workbook, `Rekap_Siswa_${new Date().toISOString().split('T')[0]}.xlsx`);
+  Utils.showToast('Rekap per siswa berhasil diekspor ke Excel', 'success');
+}
+
+function exportStudentSummaryPdf() {
+  const bills = DataManager.getBills();
+  const payments = DataManager.getPayments();
+  const students = DataManager.getStudents();
+  const school = DataManager.getSettings().schoolName || 'SDIT Al Muttaqin';
+
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  let yPos = 20;
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const margin = 15;
+  const lineHeight = 7;
+  const pageWidth = pdf.internal.pageSize.getWidth();
+
+  // Set font untuk header
+  pdf.setFontSize(16);
+  pdf.text('REKAP KEUANGAN PER SISWA', pageWidth / 2, yPos, { align: 'center' });
+  yPos += 8;
+
+  pdf.setFontSize(11);
+  pdf.text(`${school}`, pageWidth / 2, yPos, { align: 'center' });
+  yPos += 6;
+
+  pdf.setFontSize(9);
+  pdf.text(`Tanggal Laporan: ${new Date().toLocaleDateString('id-ID')}`, pageWidth / 2, yPos, { align: 'center' });
+  yPos += 10;
+
+  // Table header
+  pdf.setFontSize(10);
+  pdf.setFillColor(200, 200, 200);
+  pdf.rect(margin, yPos, pageWidth - 2 * margin, lineHeight, 'F');
+  pdf.text('NIS', margin + 2, yPos + 4);
+  pdf.text('Nama Siswa', margin + 20, yPos + 4);
+  pdf.text('Kelas', margin + 70, yPos + 4);
+  pdf.text('Tagihan', margin + 85, yPos + 4);
+  pdf.text('Terbayar', margin + 110, yPos + 4);
+  pdf.text('Tunggakan', margin + 135, yPos + 4);
+  yPos += lineHeight + 1;
+
+  pdf.setFontSize(9);
+  let rowCount = 0;
+
+  students.forEach(student => {
+    if (yPos > pageHeight - margin) {
+      pdf.addPage();
+      yPos = margin;
+    }
+
+    const studentBills = bills.filter(b => b.studentId === student.id);
+    let totalBilled = 0;
+    let totalPaid = 0;
+
+    studentBills.forEach(bill => {
+      totalBilled += bill.amount;
+      const billPayments = payments.filter(p => p.billId === bill.id);
+      totalPaid += billPayments.reduce((sum, p) => sum + p.paidAmount, 0);
+    });
+
+    const remaining = totalBilled - totalPaid;
+
+    // Alternate row background
+    if (rowCount % 2 === 0) {
+      pdf.setFillColor(240, 240, 240);
+      pdf.rect(margin, yPos, pageWidth - 2 * margin, lineHeight, 'F');
+    }
+
+    pdf.text(student.nis, margin + 2, yPos + 4);
+    pdf.text(student.name.substring(0, 20), margin + 20, yPos + 4);
+    pdf.text(student.class, margin + 70, yPos + 4);
+    pdf.text(Utils.formatCurrency(totalBilled), margin + 85, yPos + 4);
+    pdf.text(Utils.formatCurrency(totalPaid), margin + 110, yPos + 4);
+    pdf.text(Utils.formatCurrency(remaining), margin + 135, yPos + 4);
+
+    yPos += lineHeight + 1;
+    rowCount++;
+  });
+
+  pdf.save(`Rekap_Siswa_${new Date().toISOString().split('T')[0]}.pdf`);
+  Utils.showToast('Rekap per siswa berhasil diekspor ke PDF', 'success');
 }
 
 function closeModal(id) {

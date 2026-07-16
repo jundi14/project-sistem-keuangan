@@ -7,6 +7,9 @@
   <meta name="description" content="Sistem manajemen keuangan SDIT Al Muttaqin – SPP, uang buku, seragam, cicilan, dan lainnya.">
   <link rel="stylesheet" href="css/style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -411,7 +414,10 @@
           </div>
           <div class="btn-group">
             <button class="btn btn-outline" onclick="window.print()">🖨️ Cetak Laporan</button>
+            <button class="btn btn-outline" onclick="exportDetailExcel()">📊 Detail Excel</button>
+            <button class="btn btn-outline" onclick="exportStudentSummaryExcel()">👥 Rekap Siswa Excel</button>
             <button class="btn btn-primary" onclick="exportReportPdf()">📄 Export PDF</button>
+            <button class="btn btn-primary" onclick="exportStudentSummaryPdf()">📄 Rekap Siswa PDF</button>
           </div>
         </div>
 
@@ -545,55 +551,6 @@
                 <tbody id="category-settings-table"></tbody>
               </table>
             </div>
-          </div>
-        </div>
-
-        <div class="card mb-4">
-          <div class="card-header">
-            <div class="card-title">�🧾 Pengaturan Seragam & Buku</div>
-          </div>
-          <div class="card-body">
-            <div class="grid-2" style="gap:16px; margin-bottom:16px;">
-              <div class="form-group">
-                <label class="form-label">Harga Seragam Laki-laki</label>
-                <input id="settings-uniform-price-L" type="number" min="0" step="1000" placeholder="Rp 0" style="background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:8px 10px; border-radius:8px; width:100%;">
-              </div>
-              <div class="form-group">
-                <label class="form-label">Harga Seragam Perempuan</label>
-                <input id="settings-uniform-price-P" type="number" min="0" step="1000" placeholder="Rp 0" style="background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:8px 10px; border-radius:8px; width:100%;">
-              </div>
-            </div>
-            <div class="form-group" style="margin-bottom:16px;">
-              <label class="form-label">Rincian Seragam</label>
-              <textarea id="settings-uniform-details" rows="3" placeholder="Contoh: Baju putih biru, celana, jilbab, badge" style="width:100%; background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:10px; border-radius:8px;"></textarea>
-            </div>
-            <div style="display:grid; grid-template-columns:repeat(3,minmax(180px,1fr)); gap:12px; margin-bottom:16px;">
-              <div class="form-group">
-                <label class="form-label">Harga Buku Kelas I</label>
-                <input id="settings-book-price-I" type="number" min="0" step="1000" placeholder="Rp 0" style="background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:8px 10px; border-radius:8px; width:100%;">
-              </div>
-              <div class="form-group">
-                <label class="form-label">Harga Buku Kelas II</label>
-                <input id="settings-book-price-II" type="number" min="0" step="1000" placeholder="Rp 0" style="background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:8px 10px; border-radius:8px; width:100%;">
-              </div>
-              <div class="form-group">
-                <label class="form-label">Harga Buku Kelas III</label>
-                <input id="settings-book-price-III" type="number" min="0" step="1000" placeholder="Rp 0" style="background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:8px 10px; border-radius:8px; width:100%;">
-              </div>
-              <div class="form-group">
-                <label class="form-label">Harga Buku Kelas IV</label>
-                <input id="settings-book-price-IV" type="number" min="0" step="1000" placeholder="Rp 0" style="background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:8px 10px; border-radius:8px; width:100%;">
-              </div>
-              <div class="form-group">
-                <label class="form-label">Harga Buku Kelas V</label>
-                <input id="settings-book-price-V" type="number" min="0" step="1000" placeholder="Rp 0" style="background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:8px 10px; border-radius:8px; width:100%;">
-              </div>
-              <div class="form-group">
-                <label class="form-label">Harga Buku Kelas VI</label>
-                <input id="settings-book-price-VI" type="number" min="0" step="1000" placeholder="Rp 0" style="background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:8px 10px; border-radius:8px; width:100%;">
-              </div>
-            </div>
-            <button class="btn btn-outline" onclick="saveUniformBookSettings()">💾 Simpan Pengaturan Seragam & Buku</button>
           </div>
         </div>
 
@@ -1096,3 +1053,4 @@
 
 </body>
 </html>
+
