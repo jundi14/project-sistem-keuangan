@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Keuangan Sekolah – Ponpes Al Muttaqin</title>
+  <meta name="description" content="Sistem manajemen keuangan sekolah untuk Ponpes Al Muttaqin – SPP, uang buku, seragam, cicilan, dan lainnya.">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- Toast Container -->
+<div id="toast-container"></div>
+
+<!-- App Layout -->
+<div class="app-layout">
+
+  <!-- ====== SIDEBAR ====== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <div class="logo-icon">🕌</div>
+        <div>
+          <div class="logo-text">SDIT AL MUTTAQIN</div>
+          <div class="logo-sub">Sistem Keuangan</div>
+        </div>
+      </div>
+      <div class="sidebar-year">📅 T.A. 2026/2027</div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Menu Utama</div>
+
+      <div class="nav-item active" data-page="dashboard">
+        <span class="nav-icon">📊</span>
+        <span class="nav-label">Dashboard</span>
+      </div>
+
+      <div class="nav-item" data-page="students">
+        <span class="nav-icon">👨‍🎓</span>
+        <span class="nav-label">Data Siswa</span>
+      </div>
+
+      <div class="nav-item" data-page="payments">
+        <span class="nav-icon">💰</span>
+        <span class="nav-label">Riwayat Pembayaran</span>
+      </div>
+
+      <div class="nav-item" data-page="bills">
+        <span class="nav-icon">📋</span>
+        <span class="nav-label">Manajemen Tagihan</span>
+      </div>
+
+      <div class="nav-section-label">Lainnya</div>
+
+      <div class="nav-item" data-page="report">
+        <span class="nav-icon">📈</span>
+        <span class="nav-label">Laporan</span>
+      </div>
+
+      <div class="nav-item" data-page="settings">
+        <span class="nav-icon">⚙️</span>
+        <span class="nav-label">Pengaturan & Backup</span>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="info">💡 Versi 1.0 · Data tersimpan lokal</div>
+    </div>
+  </aside>
+
+  <!-- ====== MAIN CONTENT ====== -->
+  <div class="main-content">
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="sidebar-toggle" id="sidebar-toggle">☰</button>
+        <div>
+          <div class="topbar-title" id="topbar-title">Dashboard</div>
+          <div class="topbar-subtitle" id="topbar-subtitle">Ringkasan keuangan sekolah</div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-date" id="topbar-date"></div>
+      </div>
+    </header>
+
+    <!-- Page Container -->
+    <div class="page-container">
+
+      <!-- ============================================================
+           PAGE: DASHBOARD
+           ============================================================ -->
+      <div class="page active" id="page-dashboard">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">📊 Dashboard Keuangan</h1>
+            <div class="page-subtitle">Ringkasan keuangan dan statistik pembayaran</div>
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-outline" onclick="openBulkBillModal()">➕ Tagihan Massal</button>
+            <button class="btn btn-primary" onclick="openAddBillModal()">➕ Tambah Tagihan</button>
+          </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+          <div class="stat-card stat-card-accent">
+            <span class="stat-icon">💵</span>
+            <div class="stat-label">Total Tagihan</div>
+            <div class="stat-value accent" id="stat-total-billed">Rp 0</div>
+            <div class="stat-change">Total tagihan aktif</div>
+          </div>
+          <div class="stat-card stat-card-green">
+            <span class="stat-icon">✅</span>
+            <div class="stat-label">Total Terbayar</div>
+            <div class="stat-value green" id="stat-total-paid">Rp 0</div>
+            <div class="stat-change">Total pembayaran masuk</div>
+          </div>
+          <div class="stat-card stat-card-red">
+            <span class="stat-icon">⚠️</span>
+            <div class="stat-label">Total Tunggakan</div>
+            <div class="stat-value red" id="stat-total-unpaid">Rp 0</div>
+            <div class="stat-change">Belum terbayar</div>
+          </div>
+          <div class="stat-card stat-card-yellow">
+            <span class="stat-icon">👨‍🎓</span>
+            <div class="stat-label">Total Siswa</div>
+            <div class="stat-value" id="stat-students">0</div>
+            <div class="stat-change">Siswa aktif</div>
+          </div>
+        </div>
+
+        <!-- Overall Progress -->
+        <div class="overall-progress">
+          <div class="overall-progress-header">
+            <div class="overall-progress-title">📈 Progress Pembayaran Keseluruhan</div>
+            <div class="overall-progress-pct" id="overall-progress-text">0%</div>
+          </div>
+          <div class="overall-progress-bar-wrap">
+            <div class="overall-progress-bar" id="overall-progress-bar" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- Category Stats -->
+        <div class="card mb-4">
+          <div class="card-header">
+            <div class="card-title">🗂️ Per Kategori Keuangan</div>
+          </div>
+          <div class="card-body">
+            <div class="category-stats-grid" id="category-stats-grid"></div>
+          </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="charts-row mb-4">
+          <div class="chart-card">
+            <div class="chart-title">🍩 Status Pembayaran</div>
+            <div class="chart-wrap"><canvas id="chart-status"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">📅 Pembayaran per Bulan (2025)</div>
+            <div class="chart-wrap"><canvas id="chart-monthly"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Category Bar Chart -->
+        <div class="chart-card mb-4">
+          <div class="chart-title">📊 Tagihan vs Terbayar per Kategori</div>
+          <div class="chart-wrap-lg"><canvas id="chart-category"></canvas></div>
+        </div>
+
+        <!-- Bottom Grid: Recent Transactions + Tunggakan -->
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">⚡ Transaksi Terbaru</div>
+              <button class="btn btn-sm btn-outline" onclick="navigateTo('payments')">Lihat Semua →</button>
+            </div>
+            <div class="card-body" style="padding: 0 20px;">
+              <div id="recent-transactions"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">🔴 Tunggakan Terbesar</div>
+              <button class="btn btn-sm btn-outline" onclick="navigateTo('students')">Lihat Siswa →</button>
+            </div>
+            <div class="card-body">
+              <div id="tunggakan-list"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================
+           PAGE: STUDENTS
+           ============================================================ -->
+      <div class="page" id="page-students">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">👨‍🎓 Data Siswa</h1>
+            <div class="page-subtitle" id="student-count">0 siswa</div>
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-outline" onclick="openImportStudentModal()">📥 Import Siswa</button>
+            <button class="btn btn-primary" onclick="openAddStudentModal()">➕ Tambah Siswa</button>
+          </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+          <div class="search-input-wrap" style="flex:1; min-width: 200px;">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="search-input" id="student-search" placeholder="Cari nama atau NIS siswa...">
+          </div>
+          <div class="filter-group">
+            <label class="filter-label">Kelas:</label>
+            <select id="student-class-filter" style="min-width:120px;">
+              <option value="all">Semua Kelas</option>
+              <option>I</option>
+              <option>II</option>
+              <option>III</option>
+              <option>IV</option>
+              <option>V</option>
+              <option>VI</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Students Grid -->
+        <div id="students-grid"></div>
+      </div>
+
+      <!-- ============================================================
+           PAGE: PAYMENTS (Riwayat Pembayaran)
+           ============================================================ -->
+      <div class="page" id="page-payments">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">💰 Riwayat Pembayaran</h1>
+            <div class="page-subtitle">Semua transaksi keuangan</div>
+          </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+          <div class="search-input-wrap" style="flex:1; min-width:180px;">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="search-input" id="pay-search" placeholder="Cari nama atau NIS...">
+          </div>
+          <div class="filter-group">
+            <label class="filter-label">Kategori:</label>
+            <select id="pay-cat-filter" style="min-width:130px;">
+              <option value="all">Semua Kategori</option>
+              <option value="spp">🎓 SPP</option>
+              <option value="buku">📚 Uang Buku</option>
+              <option value="seragam">👕 Seragam</option>
+              <option value="cicilan">💳 Cicilan</option>
+              <option value="makan">🍱 Uang Makan</option>
+              <option value="kegiatan">⚽ Kegiatan</option>
+              <option value="lainnya">📋 Lainnya</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label class="filter-label">Status:</label>
+            <select id="pay-status-filter" style="min-width:120px;">
+              <option value="all">Semua Status</option>
+              <option value="lunas">✅ Lunas</option>
+              <option value="cicilan">🔄 Cicilan</option>
+              <option value="belum">❌ Belum Bayar</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label class="filter-label">Kelas:</label>
+            <select id="pay-class-filter" style="min-width:110px;">
+              <option value="all">Semua Kelas</option>
+              <option>I</option>
+              <option>II</option>
+              <option>III</option>
+              <option>IV</option>
+              <option>V</option>
+              <option>VI</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Summary Bar -->
+        <div class="summary-bar">
+          <div class="summary-item">🔍 Menampilkan: <strong id="pay-filtered-count">0 transaksi</strong></div>
+          <div class="summary-item green">💵 Total Terbayar: <strong id="pay-filtered-total">Rp 0</strong></div>
+        </div>
+
+        <!-- Table -->
+        <div class="table-wrap">
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nama Siswa</th>
+                  <th>Kategori</th>
+                  <th>Keterangan</th>
+                  <th>Total Tagihan</th>
+                  <th>Terbayar</th>
+                  <th>Sisa</th>
+                  <th>Status</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="payments-tbody">
+                <tr><td colspan="8" class="empty-state">Memuat data...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================
+           PAGE: BILLS (Manajemen Tagihan)
+           ============================================================ -->
+      <div class="page" id="page-bills">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">📋 Manajemen Tagihan</h1>
+            <div class="page-subtitle" id="bills-count">0 tagihan</div>
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-outline" onclick="openBulkBillModal()">📦 Tagihan Massal</button>
+            <button class="btn btn-primary" onclick="openAddBillModal()">➕ Tambah Tagihan</button>
+          </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+          <div class="search-input-wrap" style="flex:1; min-width:180px;">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="search-input" id="bill-search" placeholder="Cari siswa atau keterangan...">
+          </div>
+          <div class="filter-group">
+            <label class="filter-label">Kategori:</label>
+            <select id="bill-cat-filter" style="min-width:130px;">
+              <option value="all">Semua Kategori</option>
+              <option value="spp">🎓 SPP</option>
+              <option value="buku">📚 Uang Buku</option>
+              <option value="seragam">👕 Seragam</option>
+              <option value="cicilan">💳 Cicilan</option>
+              <option value="makan">🍱 Uang Makan</option>
+              <option value="kegiatan">⚽ Kegiatan</option>
+              <option value="lainnya">📋 Lainnya</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label class="filter-label">Kelas:</label>
+            <select id="bill-class-filter" style="min-width:110px;">
+              <option value="all">Semua Kelas</option>
+              <option>I</option>
+              <option>II</option>
+              <option>III</option>
+              <option>IV</option>
+              <option>V</option>
+              <option>VI</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="table-wrap">
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nama Siswa</th>
+                  <th>Kategori</th>
+                  <th>Keterangan</th>
+                  <th>Nominal</th>
+                  <th>Jatuh Tempo</th>
+                  <th>Status</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="bills-tbody">
+                <tr><td colspan="7" class="empty-state">Memuat data...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================
+           PAGE: REPORT
+           ============================================================ -->
+      <div class="page" id="page-report">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">📈 Laporan Keuangan</h1>
+            <div class="page-subtitle">Rekap dan analisis keuangan sekolah</div>
+          </div>
+          <button class="btn btn-outline" onclick="window.print()">🖨️ Cetak Laporan</button>
+        </div>
+
+        <!-- Summary Stats -->
+        <div class="report-summary-grid">
+          <div class="report-stat stat-card-accent">
+            <div class="report-stat-label">Total Tagihan</div>
+            <div class="report-stat-value accent" id="report-total-billed">Rp 0</div>
+          </div>
+          <div class="report-stat stat-card-green">
+            <div class="report-stat-label">Total Terbayar</div>
+            <div class="report-stat-value green" id="report-total-paid">Rp 0</div>
+          </div>
+          <div class="report-stat stat-card-red">
+            <div class="report-stat-label">Total Tunggakan</div>
+            <div class="report-stat-value red" id="report-total-unpaid">Rp 0</div>
+          </div>
+          <div class="report-stat">
+            <div class="report-stat-label">Tingkat Koleksi</div>
+            <div class="report-stat-value" id="report-collection-rate">0%</div>
+          </div>
+        </div>
+
+        <!-- Chart -->
+        <div class="chart-card mb-4">
+          <div class="chart-title">📊 Tagihan vs Terbayar per Kategori</div>
+          <div class="chart-wrap-lg"><canvas id="report-chart-category"></canvas></div>
+        </div>
+
+        <!-- By Category Table -->
+        <div class="card mb-4">
+          <div class="card-header">
+            <div class="card-title">🗂️ Rekap per Kategori</div>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Kategori</th>
+                  <th>Total Tagihan</th>
+                  <th>Terbayar</th>
+                  <th>Tunggakan</th>
+                  <th>Progress</th>
+                </tr>
+              </thead>
+              <tbody id="report-cat-table"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- By Class Table -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🏫 Rekap per Kelas</div>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Kelas</th>
+                  <th>Jumlah Siswa</th>
+                  <th>Total Tagihan</th>
+                  <th>Terbayar</th>
+                  <th>Tunggakan</th>
+                  <th>Progress</th>
+                </tr>
+              </thead>
+              <tbody id="report-class-table"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <!-- ============================================================
+           PAGE: SETTINGS (Pengaturan & Backup)
+           ============================================================ -->
+      <div class="page" id="page-settings">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">⚙️ Pengaturan & Backup</h1>
+            <div class="page-subtitle">Kelola data dan konfigurasi sistem</div>
+          </div>
+        </div>
+
+        <div class="card mb-4">
+          <div class="card-header">
+            <div class="card-title">💾 Backup & Restore Data</div>
+          </div>
+          <div class="card-body">
+            <div style="margin-bottom: 20px; font-size: 14px; color: var(--text-secondary);">
+              Simpan semua data Anda ke dalam file JSON, atau kembalikan data yang telah Anda backup sebelumnya.
+            </div>
+            <div class="btn-group" style="justify-content: flex-start; display: flex; gap: 10px;">
+              <button class="btn btn-primary" onclick="exportBackupData()">⬇️ Backup Data Sekarang</button>
+              <button class="btn btn-outline" onclick="document.getElementById('restore-file-input').click()">⬆️ Restore Data</button>
+              <input type="file" id="restore-file-input" style="display:none" accept=".json" onchange="importBackupData(event)">
+            </div>
+          </div>
+        </div>
+
+        <div class="card mb-4">
+          <div class="card-header">
+            <div class="card-title">🏷️ Manajemen Kategori Keuangan</div>
+          </div>
+          <div class="card-body">
+            <button class="btn btn-primary mb-4" onclick="openCategoryModal()" style="margin-bottom: 15px;">➕ Tambah Kategori</button>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Ikon</th>
+                    <th>ID</th>
+                    <th>Nama Kategori</th>
+                    <th>Tipe</th>
+                    <th>Warna</th>
+                    <th>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="category-settings-table"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end page-container -->
+  </div><!-- end main-content -->
+</div><!-- end app-layout -->
+
+
+<!-- ============================================================
+     MODALS
+     ============================================================ -->
+
+<!-- Category Modal -->
+<div class="modal-backdrop" id="category-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="category-modal-title">Tambah Kategori</div>
+      <button class="modal-close" onclick="closeModal('category-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="category-form" onsubmit="event.preventDefault(); submitCategoryForm();">
+        <div class="form-group">
+          <label class="form-label">ID Kategori (huruf kecil & tanpa spasi) *</label>
+          <input type="text" id="form-cat-id" placeholder="cth: spp, buku, dsb" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nama Kategori *</label>
+          <input type="text" id="form-cat-name" placeholder="cth: Uang SPP" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Ikon (Emoji) *</label>
+            <input type="text" id="form-cat-icon" placeholder="cth: 🎓" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Warna Tema *</label>
+            <input type="color" id="form-cat-color" value="#6366f1" required style="width: 100%; height: 42px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer;">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tipe</label>
+          <select id="form-cat-type">
+            <option value="bulanan">Bulanan</option>
+            <option value="semester">Semester</option>
+            <option value="tahunan">Tahunan</option>
+            <option value="cicilan">Cicilan / Fleksibel</option>
+            <option value="insidental">Insidental</option>
+          </select>
+        </div>
+        <button class="btn btn-primary full-width mt-4" type="submit">✅ Simpan Kategori</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Import Student Modal -->
+<div class="modal-backdrop" id="import-student-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📥 Import Data Siswa (Bulk)</div>
+      <button class="modal-close" onclick="closeModal('import-student-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.2); border-radius:10px; padding:12px 14px; margin-bottom:16px; font-size:13px; color:var(--text-secondary);">
+        💡 Paste (tempel) data siswa dari Excel ke kotak di bawah ini.
+        <br><br>
+        <strong>Format kolom (pisahkan dengan Tab dari Excel):</strong><br>
+        NIS | Nama Lengkap | Kelas | Jenis Kelamin (L/P) | No HP | Tahun Masuk
+      </div>
+      <textarea id="import-student-data" style="width:100%; height:150px; background: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 8px; padding: 10px; font-family: monospace;" placeholder="Contoh:&#10;2024001&#9;Budi Santoso&#9;I&#9;L&#9;081234567890&#9;2024&#10;2024002&#9;Siti Aisyah&#9;I&#9;P&#9;081234567891&#9;2024"></textarea>
+      <div class="form-row mt-4">
+        <button class="btn btn-outline" type="button" style="flex:1" onclick="closeModal('import-student-modal')">Batal</button>
+        <button class="btn btn-primary" type="button" style="flex:1" onclick="submitImportStudents()">Import Data</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Student Detail Modal -->
+<div class="modal-backdrop" id="student-detail-modal">
+  <div class="modal modal-xl">
+    <div class="student-detail-header">
+      <div class="detail-avatar" id="detail-avatar">A</div>
+      <div>
+        <div class="modal-title" id="detail-student-name">Nama Siswa</div>
+        <div style="font-size:13px; color:var(--text-secondary)" id="detail-student-meta">NIS · Kelas</div>
+      </div>
+      <div style="margin-left:auto; display:flex; gap:10px; align-items:center;">
+        <button class="btn btn-sm btn-outline" onclick="openEditStudentModal(document.getElementById('student-detail-modal').dataset.studentId)">✏️ Edit</button>
+        <button class="modal-close" onclick="closeModal('student-detail-modal')">✕</button>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="detail-summary">
+      <div class="detail-sum-item">
+        <div class="detail-sum-label">Total Tagihan</div>
+        <div class="detail-sum-value" id="detail-total-billed">Rp 0</div>
+      </div>
+      <div class="detail-sum-item">
+        <div class="detail-sum-label">Terbayar</div>
+        <div class="detail-sum-value green" id="detail-total-paid">Rp 0</div>
+      </div>
+      <div class="detail-sum-item">
+        <div class="detail-sum-label">Tunggakan</div>
+        <div class="detail-sum-value red" id="detail-total-unpaid">Rp 0</div>
+      </div>
+    </div>
+
+    <!-- Progress -->
+    <div class="detail-progress-wrap">
+      <div class="progress-bar-wrap" style="flex:1; height:10px;">
+        <div class="progress-bar" id="detail-progress-bar" style="width:0%"></div>
+      </div>
+      <div class="detail-progress-pct" id="detail-progress-pct">0%</div>
+    </div>
+
+    <!-- Filter -->
+    <div class="detail-filter-bar">
+      <select id="detail-cat-filter" style="flex:1; min-width:130px;">
+        <option value="all">Semua Kategori</option>
+        <option value="spp">🎓 SPP</option>
+        <option value="buku">📚 Uang Buku</option>
+        <option value="seragam">👕 Seragam</option>
+        <option value="cicilan">💳 Cicilan</option>
+        <option value="makan">🍱 Uang Makan</option>
+        <option value="kegiatan">⚽ Kegiatan</option>
+        <option value="lainnya">📋 Lainnya</option>
+      </select>
+      <select id="detail-status-filter" style="flex:1; min-width:120px;">
+        <option value="all">Semua Status</option>
+        <option value="lunas">✅ Lunas</option>
+        <option value="cicilan">🔄 Cicilan</option>
+        <option value="belum">❌ Belum Bayar</option>
+      </select>
+    </div>
+
+    <!-- Payment List -->
+    <div id="detail-payment-list" style="max-height: 420px; overflow-y: auto;"></div>
+  </div>
+</div>
+
+<!-- Payment Modal -->
+<div class="modal-backdrop" id="payment-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="pay-modal-title">💳 Input Pembayaran</div>
+      <button class="modal-close" onclick="closeModal('payment-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- Payment details -->
+      <div class="pay-detail-grid">
+        <div class="pay-detail-item">
+          <div class="pay-detail-label">Nama Siswa</div>
+          <div class="pay-detail-value" id="pay-modal-student">-</div>
+        </div>
+        <div class="pay-detail-item">
+          <div class="pay-detail-label">Kelas</div>
+          <div class="pay-detail-value" id="pay-modal-class">-</div>
+        </div>
+        <div class="pay-detail-item" style="grid-column: 1/-1;">
+          <div class="pay-detail-label">Keterangan</div>
+          <div class="pay-detail-value" id="pay-modal-desc">-</div>
+        </div>
+        <div class="pay-detail-item">
+          <div class="pay-detail-label">Total Tagihan</div>
+          <div class="pay-detail-value" id="pay-modal-total">Rp 0</div>
+        </div>
+        <div class="pay-detail-item">
+          <div class="pay-detail-label">Sudah Dibayar</div>
+          <div class="pay-detail-value green" id="pay-modal-paid">Rp 0</div>
+        </div>
+        <div class="pay-detail-item" style="grid-column: 1/-1;">
+          <div class="pay-detail-label">Sisa Tagihan</div>
+          <div class="pay-detail-value red" id="pay-modal-remaining">Rp 0</div>
+        </div>
+      </div>
+
+      <!-- Amount Input -->
+      <div class="form-group">
+        <label class="form-label">Jumlah Bayar (Rp) *</label>
+        <input type="number" id="pay-modal-amount" placeholder="Masukkan nominal..." min="0" step="1000">
+      </div>
+
+      <!-- Method -->
+      <div class="form-group">
+        <label class="form-label">Metode Pembayaran</label>
+        <select id="pay-modal-method">
+          <option value="tunai">💵 Tunai</option>
+          <option value="transfer">🏦 Transfer Bank</option>
+          <option value="qris">📱 QRIS</option>
+          <option value="ewallet">📲 E-Wallet</option>
+        </select>
+      </div>
+
+      <!-- Notes -->
+      <div class="form-group">
+        <label class="form-label">Catatan</label>
+        <input type="text" id="pay-modal-notes" placeholder="Opsional...">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('payment-modal')">Batal</button>
+      <button class="btn btn-primary" onclick="submitPayment()">✅ Konfirmasi Bayar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Student Modal -->
+<div class="modal-backdrop" id="student-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="student-modal-title">➕ Tambah Siswa Baru</div>
+      <button class="modal-close" onclick="closeModal('student-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="student-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">NIS *</label>
+            <input type="text" id="form-nis" placeholder="cth: 2024013" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tahun Masuk</label>
+            <input type="number" id="form-year" value="2024" min="2020" max="2030">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nama Lengkap *</label>
+          <input type="text" id="form-name" placeholder="Masukkan nama lengkap..." required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Kelas *</label>
+            <select id="form-class" required>
+              <option value="">-- Pilih Kelas --</option>
+              <option>I</option>
+              <option>II</option>
+              <option>III</option>
+              <option>IV</option>
+              <option>V</option>
+              <option>VI</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Jenis Kelamin</label>
+            <select id="form-gender">
+              <option value="L">Laki-laki</option>
+              <option value="P">Perempuan</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">No. HP / Wali</label>
+          <input type="tel" id="form-phone" placeholder="cth: 081234567890">
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('student-modal')">Batal</button>
+      <button class="btn btn-primary" onclick="submitStudentForm()">✅ Simpan Siswa</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Bill Modal -->
+<div class="modal-backdrop" id="bill-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">➕ Tambah Tagihan Baru</div>
+      <button class="modal-close" onclick="closeModal('bill-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="bill-form">
+        <div class="form-group">
+          <label class="form-label">Siswa *</label>
+          <select id="form-bill-student" required>
+            <option value="">-- Pilih Siswa --</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Kategori Keuangan *</label>
+          <select id="form-bill-category" required>
+            <option value="">-- Pilih Kategori --</option>
+            <option value="spp">🎓 SPP</option>
+            <option value="buku">📚 Uang Buku</option>
+            <option value="seragam">👕 Seragam</option>
+            <option value="cicilan">💳 Cicilan</option>
+            <option value="makan">🍱 Uang Makan</option>
+            <option value="kegiatan">⚽ Kegiatan</option>
+            <option value="lainnya">📋 Lainnya</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Keterangan *</label>
+          <input type="text" id="form-bill-desc" placeholder="cth: SPP Juli 2025" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Nominal (Rp) *</label>
+            <input type="number" id="form-bill-amount" placeholder="0" min="0" step="1000" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Jatuh Tempo *</label>
+            <input type="date" id="form-bill-due" required>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('bill-modal')">Batal</button>
+      <button class="btn btn-primary" onclick="submitBillForm()">✅ Buat Tagihan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk Bill Modal -->
+<div class="modal-backdrop" id="bulk-bill-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📦 Tagihan Massal</div>
+      <button class="modal-close" onclick="closeModal('bulk-bill-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.2); border-radius:10px; padding:12px 14px; margin-bottom:16px; font-size:13px; color:var(--text-secondary);">
+        💡 Buat tagihan untuk semua siswa atau per kelas sekaligus, misalnya tagihan SPP bulanan.
+      </div>
+      <form id="bulk-bill-form">
+        <div class="form-group">
+          <label class="form-label">Kategori Keuangan *</label>
+          <select id="form-bulk-category" required>
+            <option value="">-- Pilih Kategori --</option>
+            <option value="spp">🎓 SPP</option>
+            <option value="buku">📚 Uang Buku</option>
+            <option value="seragam">👕 Seragam</option>
+            <option value="cicilan">💳 Cicilan</option>
+            <option value="makan">🍱 Uang Makan</option>
+            <option value="kegiatan">⚽ Kegiatan</option>
+            <option value="lainnya">📋 Lainnya</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Target Kelas</label>
+          <select id="form-bulk-class">
+            <option value="all">Semua Kelas</option>
+            <option>I</option>
+            <option>II</option>
+            <option>III</option>
+            <option>IV</option>
+            <option>V</option>
+            <option>VI</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Keterangan *</label>
+          <input type="text" id="form-bulk-desc" placeholder="cth: SPP Agustus 2025" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Nominal (Rp) *</label>
+            <input type="number" id="form-bulk-amount" placeholder="0" min="0" step="1000" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Jatuh Tempo *</label>
+            <input type="date" id="form-bulk-due" required>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('bulk-bill-modal')">Batal</button>
+      <button class="btn btn-primary" onclick="submitBulkBill()">📦 Buat Tagihan Massal</button>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="js/data.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/app.js"></script>
+
+<script>
+  // Topbar date
+  const d = new Date();
+  document.getElementById('topbar-date').textContent = d.toLocaleDateString('id-ID', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+  });
+</script>
+
+</body>
+</html>
